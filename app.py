@@ -1915,31 +1915,9 @@ def marcar_cobrado(id_cobro):
 
     return redirect(url_for('panel_cobros'))
 
-@app.route('/admin/listas', methods=['GET'])
-def admin_listas():
-    list_names = config_manager.get_list_names()
-    return render_template('admin/listas.html', list_names=list_names)
-
-@app.route('/admin/listas/<list_name>', methods=['GET'])
-def admin_editar_lista(list_name):
-    items = config_manager.get_list(list_name)
-    return render_template('admin/editar_lista.html', list_name=list_name, items=items)
-
-@app.route('/api/listas/<list_name>', methods=['POST'])
-def api_update_list(list_name):
-    try:
-        # El frontend enviará la lista completa de items como un JSON
-        new_items = request.get_json()
-        if new_items is None:
-            return jsonify({'success': False, 'message': 'No se recibieron datos válidos.'}), 400
-
-        # Simplemente sobrescribimos el archivo con la nueva lista
-        if config_manager.save_list(list_name, new_items):
-            return jsonify({'success': True, 'message': f'Lista "{list_name}" actualizada exitosamente.'})
-        else:
-            return jsonify({'success': False, 'message': 'Error al guardar la lista.'}), 500
-    except Exception as e:
-        return jsonify({'success': False, 'message': f'Error del servidor: {str(e)}'}), 500
+# Registrar el Blueprint de administración
+from admin import admin_bp
+app.register_blueprint(admin_bp)
 
 if __name__ == '__main__':
     try:
