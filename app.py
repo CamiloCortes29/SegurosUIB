@@ -5,6 +5,7 @@ from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 import uuid
+import config_manager
 
 def limpiar_valor_moneda(valor_str):
     """
@@ -100,10 +101,6 @@ PROSPECTOS_DATA_DIR_NAME = 'DATOS_PROSPECTOS'
 PROSPECTOS_DATA_DIR = os.path.join(BASE_DIR, PROSPECTOS_DATA_DIR_NAME)
 PROSPECTOS_FILENAME = 'prospectos.xlsx'
 
-OPCIONES_RESPONSABLE_TECNICO = ['Luisa', 'Valentina', 'Jairo', 'Jose', 'William']
-OPCIONES_RESPONSABLE_COMERCIAL = ['Jose', 'Valentina', 'Jairo', 'Pedro', 'William', 'Camila']
-OPCIONES_ESTADO_PROSPECTO = ['Activo', 'En gestión', 'Cotización', 'Pdte respuesta', 'Ganado', 'Perdido']
-
 # Define the final column order for the prospectos.xlsx file
 ORDEN_COLUMNAS_PROSPECTOS = [
     'ID_PROSPECTO',
@@ -135,9 +132,6 @@ COLUMNAS_ADICIONALES_VENCIMIENTOS = [
     'Remision_Asociada' # Nueva columna
 ]
 
-OPCIONES_RESPONSABLE_VENCIMIENTOS = ['Lina Castro', 'Valentina', 'Jairo', 'William', 'Jose']
-OPCIONES_ESTADO_VENCIMIENTOS = ['Pendiente Seguimiento', 'En Proceso', 'Renovado', 'No Renovado', 'Vencido']
-
 ORDEN_COLUMNAS_VENCIMIENTOS = [
     'ID_VENCIMIENTO', 'FECHA FIN', 'Fecha_inicio_seguimiento',
     'NÚMERO PÓLIZA', 'NOMBRES CLIENTE', 'ASEGURADORA', 'RAMO PRINCIPAL',
@@ -153,47 +147,6 @@ ORDEN_COLUMNAS_COBROS = [
     'N_Poliza', 'N_Cuota', 'Total_Cuotas', 'Fecha_Vencimiento_Cuota',
     'Fecha_Inicio_Vigencia', 'Fecha_Fin_Vigencia', 'Estado', 'Tipo_Movimiento'
 ]
-
-# --- Remisiones Formulario Constants ---
-OPCIONES_ASEGURADORA = [
-    "ALLIANZ SEGUROS DE VIDA S.A.", "ALLIANZ SEGUROS S.A.", "ASEGURADORA SOLIDARIA DE COLOMBIA LTDA.",
-    "ASSIST CARD DE COLOMBIA S.A.S.", "AXA COLPATRIA SEGUROS DE VIDA S.A.", "AXA COLPATRIA SEGUROS S.A.",
-    "BBVA SEGUROS COLOMBIA S.A.", "BERKLEY INTERNACIONAL SEGUROS COLOMBIA S.A.",
-    "CAJA DE COMPENSACION FAMILIAR COMPENSAR- COMPLEMENTARIO", "CESCE SEGUREXPO DE COLOMBIA SA",
-    "CHUBB SEGUROS COLOMBIA S.A.", "CIA ASEGURADORA DE FIANZAS S.A", "COLMENA SEGUROS DE VIDA S.A.",
-    "COMPAÑIA DE SEGUROS BOLIVAR S.A.", "COMPAÑÍA MUNDIAL DE SEGUROS S.A.", "HDI SEGUROS S.A",
-    "JMALUCELLI TRAVELERS SEGUROS S.A", "LA EQUIDAD SEGUROS GENERALES", "LA PREVISORA S.A.",
-    "LIBERTY SEGUROS DE VIDA S.A.", "LIBERTY SEGUROS S.A.", "LLOYDS OF LONDON",
-    "MAPFRE COLOMBIA VIDA SEGUROS S.A", "MAPFRE SEGUROS GENERALES DE COLOMBIA S.A.",
-    "MAPFRE SERVICIOS EXEQUIALES S.A.S.", "METLIFE COLOMBIA SEGUROS DE VIDA S.A.",
-    "NACIONAL DE SEGUROS S.A.", "PAN AMERICAN LIFE DE COLOMBIA COMPAÑÍA DE SEGUROS S.A.",
-    "POSITIVA COMPAÑIA DE SEGUROS S.A.", "QUÁLITAS COMPAÑÍA DE SEGUROS COLOMBIA S.A.",
-    "SBS SEGUROS COLOMBIA S.A.", "SEGURO DE VIDA SURAMERICANA S.A", "SEGUROS COMERCIALES BOLIVAR S.A.",
-    "SEGUROS DE VIDA DEL ESTADO S.A.", "SEGUROS DEL ESTADO S.A.", "SEGUROS GENERALES SURAMERICANA S.A.",
-    "ZURICH COLOMBIA SEGUROS S.A."
-]
-OPCIONES_TIPO_MONEDA = ["COP", "USD"]
-OPCIONES_VENDEDOR_REMISIONES = [
-    "ANDRES DAES", "DULTON CONSULTANTS LTDA", "ESCALA CAPITAL SAS", "GOYA CONSULTORES SAS",
-    "GOYA CONSULTORES SAS, UIB CORREDORES DE SEGUROS S.A.", "INVERSIONES ARCANGEL SAN RAFAEL SAS",
-    "JAIRO ANDRES JAIMES JAIMES", "JOSE DAVID CARREÑO", "JOSE GREGORIO MONTAÑA MASMELA",
-    "JULIAN ENRIQUE BETANCOURT", "LOS 5 T SAS", "LYDA PARDO", "NESTOR RAUL ROJAS",
-    "PEDRO CARREÑO", "UIB CORREDORES DE SEGUROS S.A.", "WILLIAM ALBERTO SANCHEZ RUIZ"
-]
-OPCIONES_FORMA_PAGO = ["Acuerdo de pago", "Contado", "Financiado", "Fraccionado"]
-OPCIONES_PERIODICIDAD_PAGO = ["Anual", "Mensual", "Trimestral"]
-OPCIONES_RAMO_FORMULARIO = [
-    "AP - ACCIDENTES PERSONALES", "ARL - RIESGOS LABORALES", "ARR - ARRENDAMIENTO", "ASIS - ASISTENCIA MEDICA",
-    "AU - AUTOMOVILES", "AVIACION", "CASCO - CASCO", "COP - COPROPIEDAD", "CU - CUMPLIMIENTO",
-    "CY - CYBER", "D&O - DIRECTORES Y ADMINISTRADORES", "DL - DISPOSICIONES LEGALES", "EX - EXEQUIAS",
-    "HO - HOGAR", "IRF - INFIDELIDAD Y RIESGOS FINANCIEROS", "MN - MANEJO", "MYE - MAQUINARIA Y EQUIPO",
-    "PYME - PYME", "RC CO - RESPONSABILIDAD CIVIL COMBUSTIBLE", "RC CU - RESPONSABILIDAD CIVIL CUMPLIMIENTO",
-    "RC SP - RESPONSABILIDAD CIVIL SERVIDORES PUBLICOS", "RC-AMBIENTAL", "RCE - RESPONSABILIDAD CIVIL EXTRACONTRACTUAL",
-    "RCP - RESPONSABILIDAD CIVIL PROFESIONAL", "SA - SALUD", "SERIEDAD DE OFERTA", "SOAT - SOAT",
-    "TR - TRANSPORTES MERCANCIAS", "TR CM - TODO RIESGO CONSTRUCCION Y MONTAJE", "TR V - TRANSPORTE DE VALORES",
-    "TRDM - TODO RIESGO DAÑO MATERIAL", "VD - VIDA DEUDORES", "VG - VIDA GRUPO", "VI - VIDA INDIVIDUAL"
-]
-OPCIONES_ANALISTA = ["Lina Castro", "Valentina Aguilera", "Jairo", "Jose", "William"]
 
 # This is the definitive column order for remisiones.xlsx
 # It includes all fields from the form, including calculated ones.
@@ -348,13 +301,13 @@ def formulario_remision():
 
     # These global lists should be defined at the top of app.py
     return render_template('formulario.html',
-                           opciones_aseguradora=OPCIONES_ASEGURADORA,
-                           opciones_ramo=OPCIONES_RAMO_FORMULARIO,
-                           opciones_tipo_moneda=OPCIONES_TIPO_MONEDA,
-                           opciones_vendedor=OPCIONES_VENDEDOR_REMISIONES,
-                           opciones_forma_pago=OPCIONES_FORMA_PAGO,
-                           opciones_periodicidad_pago=OPCIONES_PERIODICIDAD_PAGO,
-                           opciones_analista=OPCIONES_ANALISTA,
+                           opciones_aseguradora=config_manager.get_list('aseguradoras'),
+                           opciones_ramo=config_manager.get_list('ramos'),
+                           opciones_tipo_moneda=config_manager.get_list('tipo_moneda'),
+                           opciones_vendedor=config_manager.get_list('vendedores'),
+                           opciones_forma_pago=config_manager.get_list('forma_pago'),
+                           opciones_periodicidad_pago=config_manager.get_list('periodicidad_pago'),
+                           opciones_analista=config_manager.get_list('analistas'),
                            prospecto=prospecto_data
                           )
 
@@ -798,12 +751,12 @@ def ejecutar_crear_carpeta():
 def crear_prospecto():
     if request.method == 'GET':
         return render_template('prospectos_crear.html',
-                               opciones_responsable_tecnico=OPCIONES_RESPONSABLE_TECNICO,
-                               opciones_responsable_comercial=OPCIONES_RESPONSABLE_COMERCIAL,
-                               opciones_estado=OPCIONES_ESTADO_PROSPECTO,
-                               opciones_ramo=OPCIONES_RAMO_FORMULARIO,
-                               opciones_aseguradora=OPCIONES_ASEGURADORA,
-                               opciones_vendedor=OPCIONES_VENDEDOR_REMISIONES)
+                               opciones_responsable_tecnico=config_manager.get_list('responsable_tecnico'),
+                               opciones_responsable_comercial=config_manager.get_list('responsable_comercial'),
+                               opciones_estado=config_manager.get_list('estado_prospecto'),
+                               opciones_ramo=config_manager.get_list('ramos'),
+                               opciones_aseguradora=config_manager.get_list('aseguradoras'),
+                               opciones_vendedor=config_manager.get_list('vendedores'))
 
     if request.method == 'POST':
         try:
@@ -896,9 +849,9 @@ def prospectos_vista():
 
     return render_template('prospectos_vista.html',
                            prospectos=prospectos_data,
-                           opciones_responsable_tecnico=OPCIONES_RESPONSABLE_TECNICO,
-                           opciones_responsable_comercial=OPCIONES_RESPONSABLE_COMERCIAL,
-                           opciones_estado=OPCIONES_ESTADO_PROSPECTO,
+                           opciones_responsable_tecnico=config_manager.get_list('responsable_tecnico'),
+                           opciones_responsable_comercial=config_manager.get_list('responsable_comercial'),
+                           opciones_estado=config_manager.get_list('estado_prospecto'),
                            kpi_recaudo_mes=kpi_recaudo_mes,
                            kpi_top_ramos=kpi_top_ramos)
 
@@ -918,11 +871,11 @@ def prospecto_editar(prospecto_id):
 
     return render_template('prospectos_editar.html',
                            prospecto=prospecto_data[0],
-                           opciones_responsable_tecnico=OPCIONES_RESPONSABLE_TECNICO,
-                           opciones_responsable_comercial=OPCIONES_RESPONSABLE_COMERCIAL,
-                           opciones_estado=OPCIONES_ESTADO_PROSPECTO,
-                           opciones_ramo=OPCIONES_RAMO_FORMULARIO,
-                           opciones_aseguradora=OPCIONES_ASEGURADORA)
+                           opciones_responsable_tecnico=config_manager.get_list('responsable_tecnico'),
+                           opciones_responsable_comercial=config_manager.get_list('responsable_comercial'),
+                           opciones_estado=config_manager.get_list('estado_prospecto'),
+                           opciones_ramo=config_manager.get_list('ramos'),
+                           opciones_aseguradora=config_manager.get_list('aseguradoras'))
 
 @app.route('/prospectos/guardar_edicion', methods=['POST'])
 def prospecto_guardar_edicion():
@@ -1543,8 +1496,8 @@ def visualizar_vencimientos():
                                 registros=lista_registros,
                                 kpis=kpis,
                                 ramos_kpis=ramos_kpis,
-                                opciones_responsable_js=OPCIONES_RESPONSABLE_VENCIMIENTOS,
-                                opciones_estado_js=OPCIONES_ESTADO_VENCIMIENTOS,
+                                opciones_responsable_js=config_manager.get_list('responsable_vencimientos'),
+                                opciones_estado_js=config_manager.get_list('estado_vencimientos'),
                                 search_term=search_term
                                )
     except Exception as e:
@@ -1961,6 +1914,32 @@ def marcar_cobrado(id_cobro):
         flash('Error: Archivo de cobros no encontrado.', 'danger')
 
     return redirect(url_for('panel_cobros'))
+
+@app.route('/admin/listas', methods=['GET'])
+def admin_listas():
+    list_names = config_manager.get_list_names()
+    return render_template('admin/listas.html', list_names=list_names)
+
+@app.route('/admin/listas/<list_name>', methods=['GET'])
+def admin_editar_lista(list_name):
+    items = config_manager.get_list(list_name)
+    return render_template('admin/editar_lista.html', list_name=list_name, items=items)
+
+@app.route('/api/listas/<list_name>', methods=['POST'])
+def api_update_list(list_name):
+    try:
+        # El frontend enviará la lista completa de items como un JSON
+        new_items = request.get_json()
+        if new_items is None:
+            return jsonify({'success': False, 'message': 'No se recibieron datos válidos.'}), 400
+
+        # Simplemente sobrescribimos el archivo con la nueva lista
+        if config_manager.save_list(list_name, new_items):
+            return jsonify({'success': True, 'message': f'Lista "{list_name}" actualizada exitosamente.'})
+        else:
+            return jsonify({'success': False, 'message': 'Error al guardar la lista.'}), 500
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Error del servidor: {str(e)}'}), 500
 
 if __name__ == '__main__':
     try:
