@@ -1,18 +1,66 @@
 [
-    "ANDRES DAES",
-    "DULTON CONSULTANTS LTDA",
-    "ESCALA CAPITAL SAS",
-    "GOYA CONSULTORES SAS",
-    "GOYA CONSULTORES SAS, UIB CORREDORES DE SEGUROS S.A.",
-    "INVERSIONES ARCANGEL SAN RAFAEL SAS",
-    "JAIRO ANDRES JAIMES JAIMES",
-    "JOSE DAVID CARREÑO",
-    "JOSE GREGORIO MONTAÑA MASMELA",
-    "JULIAN ENRIQUE BETANCOURT",
-    "LOS 5 T SAS",
-    "LYDA PARDO",
-    "NESTOR RAUL ROJAS",
-    "PEDRO CARREÑO",
-    "UIB CORREDORES DE SEGUROS S.A.",
-    "WILLIAM ALBERTO SANCHEZ RUIZ"
+    {
+        "nombre": "ANDRES DAES",
+        "comision": 15
+    },
+    {
+        "nombre": "DULTON CONSULTANTS LTDA",
+        "comision": 15
+    },
+    {
+        "nombre": "ESCALA CAPITAL SAS",
+        "comision": 15
+    },
+    {
+        "nombre": "GOYA CONSULTORES SAS",
+        "comision": 15
+    },
+    {
+        "nombre": "GOYA CONSULTORES SAS, UIB CORREDORES DE SEGUROS S.A.",
+        "comision": 15
+    },
+    {
+        "nombre": "INVERSIONES ARCANGEL SAN RAFAEL SAS",
+        "comision": 15
+    },
+    {
+        "nombre": "JAIRO ANDRES JAIMES JAIMES",
+        "comision": 15
+    },
+    {
+        "nombre": "JOSE DAVID CARREÑO",
+        "comision": 15
+    },
+    {
+        "nombre": "JOSE GREGORIO MONTAÑA MASMELA",
+        "comision": 15
+    },
+    {
+        "nombre": "JULIAN ENRIQUE BETANCOURT",
+        "comision": 15
+    },
+    {
+        "nombre": "LOS 5 T SAS",
+        "comision": 15
+    },
+    {
+        "nombre": "LYDA PARDO",
+        "comision": 15
+    },
+    {
+        "nombre": "NESTOR RAUL ROJAS",
+        "comision": 15
+    },
+    {
+        "nombre": "PEDRO CARREÑO",
+        "comision": 15
+    },
+    {
+        "nombre": "UIB CORREDORES DE SEGUROS S.A.",
+        "comision": 100
+    },
+    {
+        "nombre": "WILLIAM ALBERTO SANCHEZ RUIZ",
+        "comision": 15
+    }
 ]
