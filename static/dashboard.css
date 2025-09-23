@@ -163,6 +163,10 @@ body {
 .btn-cobros i { color: #55d35b; }
 .btn-cobros:hover i { color: #2fb035; }
 
+.btn-admin { border-top-color: #6c757d; }
+.btn-admin i { color: #6c757d; }
+.btn-admin:hover i { color: #5a6268; }
+
 .disabled-button {
     background-color: #f0f0f0;
     color: #aaa;
