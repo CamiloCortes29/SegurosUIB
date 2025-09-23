@@ -1,59 +1,55 @@
 [
     {
         "nombre": "ANDRES DAES",
-        "comision": "0"
+        "comision": "15"
     },
     {
         "nombre": "DULTON CONSULTANTS LTDA",
-        "comision": "0"
+        "comision": "15"
     },
     {
         "nombre": "ESCALA CAPITAL SAS",
-        "comision": "0"
+        "comision": "15"
     },
     {
         "nombre": "GOYA CONSULTORES SAS",
-        "comision": "0"
-    },
-    {
-        "nombre": "GOYA CONSULTORES SAS, UIB CORREDORES DE SEGUROS S.A.",
-        "comision": "0"
+        "comision": "15"
     },
     {
         "nombre": "INVERSIONES ARCANGEL SAN RAFAEL SAS",
-        "comision": "0"
+        "comision": "15"
     },
     {
         "nombre": "JAIRO ANDRES JAIMES JAIMES",
-        "comision": "0"
+        "comision": "15"
     },
     {
         "nombre": "JOSE DAVID CARREÑO",
-        "comision": "0"
+        "comision": "15"
     },
     {
         "nombre": "JOSE GREGORIO MONTAÑA MASMELA",
-        "comision": "0"
+        "comision": "15"
     },
     {
         "nombre": "JULIAN ENRIQUE BETANCOURT",
-        "comision": "0"
+        "comision": "15"
     },
     {
         "nombre": "LOS 5 T SAS",
-        "comision": "0"
+        "comision": "15"
     },
     {
         "nombre": "LYDA PARDO",
-        "comision": "0"
+        "comision": "15"
     },
     {
         "nombre": "NESTOR RAUL ROJAS",
-        "comision": "0"
+        "comision": "15"
     },
     {
         "nombre": "PEDRO CARREÑO",
-        "comision": "0"
+        "comision": "15"
     },
     {
         "nombre": "UIB CORREDORES DE SEGUROS S.A.",
@@ -61,6 +57,6 @@
     },
     {
         "nombre": "WILLIAM ALBERTO SANCHEZ RUIZ",
-        "comision": "0"
+        "comision": "15"
     }
 ]
