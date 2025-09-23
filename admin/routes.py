@@ -54,41 +54,43 @@ def listas():
     list_names = config_manager.get_all_list_names()
     return render_template('admin/listas.html', list_names=list_names)
 
-@admin_bp.route('/listas/editar/<list_name>', methods=['GET'])
+@admin_bp.route('/listas/editar/<list_name>', methods=['GET', 'POST'])
 @admin_required
-def editar_lista(list_name):
+def edit_list_item(list_name):
+    """
+    Ruta unificada para editar y guardar cualquier lista de configuración.
+    Despacha a la plantilla correcta y maneja la lógica de guardado
+    basado en el nombre de la lista.
+    """
+    if request.method == 'POST':
+        # Guardar los datos
+        if list_name == 'vendedores':
+            items = []
+            nombres = request.form.getlist('item_nombre')
+            comisiones = request.form.getlist('item_comision')
+            for nombre, comision in zip(nombres, comisiones):
+                if nombre.strip():
+                    items.append({'nombre': nombre.strip(), 'comision': comision.strip() or '0'})
+        else:
+            items_str = request.form.get('items')
+            items = [item.strip() for item in items_str.split('\n') if item.strip()]
+
+        if config_manager.save_list(list_name, items):
+            flash(f"Lista '{list_name}' guardada con éxito.", 'success')
+        else:
+            flash(f"Error al guardar la lista '{list_name}'.", 'danger')
+
+        return redirect(url_for('admin.edit_list_item', list_name=list_name))
+
+    # Método GET: Mostrar el formulario de edición
     items = config_manager.get_list(list_name)
     if items is None:
         flash(f"La lista '{list_name}' no fue encontrada.", 'danger')
         return redirect(url_for('admin.listas'))
 
-    # Determinar si es una lista de objetos (vendedores) o strings
-    is_object_list = isinstance(items[0], dict) if items else False
-
-    return render_template('admin/editar_lista.html', list_name=list_name, items=items, is_object_list=is_object_list)
-
-@admin_bp.route('/listas/guardar/<list_name>', methods=['POST'])
-@admin_required
-def guardar_lista(list_name):
-    # Lógica para manejar tanto listas simples como listas de objetos
-    is_object_list = 'is_object_list' in request.form
-
-    if is_object_list:
-        # Manejar lista de objetos (vendedores)
-        items = []
-        nombres = request.form.getlist('item_nombre')
-        comisiones = request.form.getlist('item_comision')
-        for nombre, comision in zip(nombres, comisiones):
-            if nombre: # Solo agregar si el nombre no está vacío
-                items.append({'nombre': nombre, 'comision': comision or '0'})
+    if list_name == 'vendedores':
+        # Renderizar la plantilla específica para vendedores
+        return render_template('admin/editar_vendedores.html', list_name=list_name, items=items)
     else:
-        # Manejar lista simple de strings
-        items_str = request.form.get('items')
-        items = [item.strip() for item in items_str.split('\n') if item.strip()]
-
-    if config_manager.save_list(list_name, items):
-        flash(f"Lista '{list_name}' guardada con éxito.", 'success')
-    else:
-        flash(f"Error al guardar la lista '{list_name}'.", 'danger')
-
-    return redirect(url_for('admin.editar_lista', list_name=list_name))
+        # Renderizar la plantilla genérica para listas simples
+        return render_template('admin/editar_lista_simple.html', list_name=list_name, items=items)
