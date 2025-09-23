@@ -166,8 +166,8 @@
                             <label for="vendedor"><i class="fas fa-user-tie"></i> Vendedor</label>
                              <select name="vendedor" id="vendedor" required>
                                 <option value="">Seleccione Vendedor...</option>
-                                {% for vendedor in opciones_vendedor %}
-                                <option value="{{ vendedor.nombre }}" data-comision="{{ vendedor.comision }}">{{ vendedor.nombre }}</option>
+                                {% for opt in opciones_vendedor %}
+                                <option value="{{ opt }}">{{ opt }}</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -781,24 +781,6 @@
             if (fechaRecepcion && !fechaRecepcion.value) {
                 const today = new Date().toISOString().split('T')[0];
                 fechaRecepcion.value = today;
-            }
-
-            // --- Lógica para autocompletar comisión de vendedor ---
-            const vendedorSelect = document.getElementById('vendedor');
-            const porcParticipacionVendedorInput = document.getElementById('porcentaje_vendedor');
-
-            if (vendedorSelect && porcParticipacionVendedorInput) {
-                vendedorSelect.addEventListener('change', function() {
-                    const selectedOption = this.options[this.selectedIndex];
-                    const comision = selectedOption.dataset.comision;
-                    if (comision) {
-                        porcParticipacionVendedorInput.value = comision;
-                        // Disparar un evento 'input' para que se recalculen las comisiones
-                        porcParticipacionVendedorInput.dispatchEvent(new Event('input'));
-                    } else {
-                        porcParticipacionVendedorInput.value = '';
-                    }
-                });
             }
         });
     </script>

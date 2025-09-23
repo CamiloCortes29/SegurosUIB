@@ -115,8 +115,8 @@
                                 <label for="nombre_tpp">Nombre TPP</label>
                                 <select id="nombre_tpp" name="Nombre_TPP">
                                     <option value="">Seleccione Vendedor...</option>
-                                    {% for vendedor in opciones_vendedor %}
-                                    <option value="{{ vendedor.nombre }}" data-comision="{{ vendedor.comision }}">{{ vendedor.nombre }}</option>
+                                    {% for opt in opciones_vendedor %}
+                                    <option value="{{ opt }}">{{ opt }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
@@ -165,24 +165,8 @@
         const comisionValorInput = document.getElementById('comision_valor');
         const esTppSelect = document.getElementById('es_tpp');
         const tppDetails = document.getElementById('tpp-details');
-        const nombreTppSelect = document.getElementById('nombre_tpp');
         const porcentajeTppInput = document.getElementById('porcentaje_comision_tpp');
         const valorTppInput = document.getElementById('valor_comision_tpp');
-
-        // --- Lógica para autocompletar comisión de TPP ---
-        if (nombreTppSelect && porcentajeTppInput) {
-            nombreTppSelect.addEventListener('change', function() {
-                const selectedOption = this.options[this.selectedIndex];
-                const comision = selectedOption.dataset.comision;
-                if (comision) {
-                    porcentajeTppInput.value = comision;
-                    // Disparar un evento 'input' para que se recalculen las comisiones
-                    porcentajeTppInput.dispatchEvent(new Event('input'));
-                } else {
-                    porcentajeTppInput.value = '';
-                }
-            });
-        }
 
         function formatIntegerCurrency(input) {
             let value = input.value.replace(/[^0-9]/g, '');

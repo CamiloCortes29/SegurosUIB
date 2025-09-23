@@ -5,7 +5,6 @@ from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 import uuid
-import config_manager
 
 def limpiar_valor_moneda(valor_str):
     """
@@ -60,6 +59,7 @@ UPLOAD_FOLDER = os.path.join(BASE_DIR, 'archivos_subidos')
 CONSECUTIVO_FILE = os.path.join(BASE_DIR, 'consecutivo.txt')
 EXCEL_FILE = os.path.join(BASE_DIR, 'remisiones.xlsx')
 CLIENT_FOLDERS_BASE_DIR = os.path.join(BASE_DIR, 'CLIENTES_CARPETAS')
+VENDEDORES_FOLDERS_BASE_DIR = os.path.join(BASE_DIR, 'VENDEDORES_CARPETAS')
 CARTERA_DATA_DIR_NAME = 'DATOS_CARTERA' # Folder name
 CARTERA_DATA_DIR = os.path.join(BASE_DIR, CARTERA_DATA_DIR_NAME)
 CARTERA_PROCESADA_FILENAME = 'cartera_procesada.xlsx'
@@ -101,6 +101,10 @@ PROSPECTOS_DATA_DIR_NAME = 'DATOS_PROSPECTOS'
 PROSPECTOS_DATA_DIR = os.path.join(BASE_DIR, PROSPECTOS_DATA_DIR_NAME)
 PROSPECTOS_FILENAME = 'prospectos.xlsx'
 
+OPCIONES_RESPONSABLE_TECNICO = ['Luisa', 'Valentina', 'Jairo', 'Jose', 'William']
+OPCIONES_RESPONSABLE_COMERCIAL = ['Jose', 'Valentina', 'Jairo', 'Pedro', 'William', 'Camila']
+OPCIONES_ESTADO_PROSPECTO = ['Activo', 'En gestión', 'Cotización', 'Pdte respuesta', 'Ganado', 'Perdido']
+
 # Define the final column order for the prospectos.xlsx file
 ORDEN_COLUMNAS_PROSPECTOS = [
     'ID_PROSPECTO',
@@ -132,6 +136,9 @@ COLUMNAS_ADICIONALES_VENCIMIENTOS = [
     'Remision_Asociada' # Nueva columna
 ]
 
+OPCIONES_RESPONSABLE_VENCIMIENTOS = ['Lina Castro', 'Valentina', 'Jairo', 'William', 'Jose']
+OPCIONES_ESTADO_VENCIMIENTOS = ['Pendiente Seguimiento', 'En Proceso', 'Renovado', 'No Renovado', 'Vencido']
+
 ORDEN_COLUMNAS_VENCIMIENTOS = [
     'ID_VENCIMIENTO', 'FECHA FIN', 'Fecha_inicio_seguimiento',
     'NÚMERO PÓLIZA', 'NOMBRES CLIENTE', 'ASEGURADORA', 'RAMO PRINCIPAL',
@@ -147,6 +154,47 @@ ORDEN_COLUMNAS_COBROS = [
     'N_Poliza', 'N_Cuota', 'Total_Cuotas', 'Fecha_Vencimiento_Cuota',
     'Fecha_Inicio_Vigencia', 'Fecha_Fin_Vigencia', 'Estado', 'Tipo_Movimiento'
 ]
+
+# --- Remisiones Formulario Constants ---
+OPCIONES_ASEGURADORA = [
+    "ALLIANZ SEGUROS DE VIDA S.A.", "ALLIANZ SEGUROS S.A.", "ASEGURADORA SOLIDARIA DE COLOMBIA LTDA.",
+    "ASSIST CARD DE COLOMBIA S.A.S.", "AXA COLPATRIA SEGUROS DE VIDA S.A.", "AXA COLPATRIA SEGUROS S.A.",
+    "BBVA SEGUROS COLOMBIA S.A.", "BERKLEY INTERNACIONAL SEGUROS COLOMBIA S.A.",
+    "CAJA DE COMPENSACION FAMILIAR COMPENSAR- COMPLEMENTARIO", "CESCE SEGUREXPO DE COLOMBIA SA",
+    "CHUBB SEGUROS COLOMBIA S.A.", "CIA ASEGURADORA DE FIANZAS S.A", "COLMENA SEGUROS DE VIDA S.A.",
+    "COMPAÑIA DE SEGUROS BOLIVAR S.A.", "COMPAÑÍA MUNDIAL DE SEGUROS S.A.", "HDI SEGUROS S.A",
+    "JMALUCELLI TRAVELERS SEGUROS S.A", "LA EQUIDAD SEGUROS GENERALES", "LA PREVISORA S.A.",
+    "LIBERTY SEGUROS DE VIDA S.A.", "LIBERTY SEGUROS S.A.", "LLOYDS OF LONDON",
+    "MAPFRE COLOMBIA VIDA SEGUROS S.A", "MAPFRE SEGUROS GENERALES DE COLOMBIA S.A.",
+    "MAPFRE SERVICIOS EXEQUIALES S.A.S.", "METLIFE COLOMBIA SEGUROS DE VIDA S.A.",
+    "NACIONAL DE SEGUROS S.A.", "PAN AMERICAN LIFE DE COLOMBIA COMPAÑÍA DE SEGUROS S.A.",
+    "POSITIVA COMPAÑIA DE SEGUROS S.A.", "QUÁLITAS COMPAÑÍA DE SEGUROS COLOMBIA S.A.",
+    "SBS SEGUROS COLOMBIA S.A.", "SEGURO DE VIDA SURAMERICANA S.A", "SEGUROS COMERCIALES BOLIVAR S.A.",
+    "SEGUROS DE VIDA DEL ESTADO S.A.", "SEGUROS DEL ESTADO S.A.", "SEGUROS GENERALES SURAMERICANA S.A.",
+    "ZURICH COLOMBIA SEGUROS S.A."
+]
+OPCIONES_TIPO_MONEDA = ["COP", "USD"]
+OPCIONES_VENDEDOR_REMISIONES = [
+    "ANDRES DAES", "DULTON CONSULTANTS LTDA", "ESCALA CAPITAL SAS", "GOYA CONSULTORES SAS",
+    "GOYA CONSULTORES SAS, UIB CORREDORES DE SEGUROS S.A.", "INVERSIONES ARCANGEL SAN RAFAEL SAS",
+    "JAIRO ANDRES JAIMES JAIMES", "JOSE DAVID CARREÑO", "JOSE GREGORIO MONTAÑA MASMELA",
+    "JULIAN ENRIQUE BETANCOURT", "LOS 5 T SAS", "LYDA PARDO", "NESTOR RAUL ROJAS",
+    "PEDRO CARREÑO", "UIB CORREDORES DE SEGUROS S.A.", "WILLIAM ALBERTO SANCHEZ RUIZ"
+]
+OPCIONES_FORMA_PAGO = ["Acuerdo de pago", "Contado", "Financiado", "Fraccionado"]
+OPCIONES_PERIODICIDAD_PAGO = ["Anual", "Mensual", "Trimestral"]
+OPCIONES_RAMO_FORMULARIO = [
+    "AP - ACCIDENTES PERSONALES", "ARL - RIESGOS LABORALES", "ARR - ARRENDAMIENTO", "ASIS - ASISTENCIA MEDICA",
+    "AU - AUTOMOVILES", "AVIACION", "CASCO - CASCO", "COP - COPROPIEDAD", "CU - CUMPLIMIENTO",
+    "CY - CYBER", "D&O - DIRECTORES Y ADMINISTRADORES", "DL - DISPOSICIONES LEGALES", "EX - EXEQUIAS",
+    "HO - HOGAR", "IRF - INFIDELIDAD Y RIESGOS FINANCIEROS", "MN - MANEJO", "MYE - MAQUINARIA Y EQUIPO",
+    "PYME - PYME", "RC CO - RESPONSABILIDAD CIVIL COMBUSTIBLE", "RC CU - RESPONSABILIDAD CIVIL CUMPLIMIENTO",
+    "RC SP - RESPONSABILIDAD CIVIL SERVIDORES PUBLICOS", "RC-AMBIENTAL", "RCE - RESPONSABILIDAD CIVIL EXTRACONTRACTUAL",
+    "RCP - RESPONSABILIDAD CIVIL PROFESIONAL", "SA - SALUD", "SERIEDAD DE OFERTA", "SOAT - SOAT",
+    "TR - TRANSPORTES MERCANCIAS", "TR CM - TODO RIESGO CONSTRUCCION Y MONTAJE", "TR V - TRANSPORTE DE VALORES",
+    "TRDM - TODO RIESGO DAÑO MATERIAL", "VD - VIDA DEUDORES", "VG - VIDA GRUPO", "VI - VIDA INDIVIDUAL"
+]
+OPCIONES_ANALISTA = ["Lina Castro", "Valentina Aguilera", "Jairo", "Jose", "William"]
 
 # This is the definitive column order for remisiones.xlsx
 # It includes all fields from the form, including calculated ones.
@@ -183,11 +231,13 @@ ORDEN_COLUMNAS_EXCEL_REMISIONES = [
 # Configurar carpeta de carga
 os.makedirs(UPLOAD_FOLDER, exist_ok=True) # For remision attachments
 os.makedirs(CLIENT_FOLDERS_BASE_DIR, exist_ok=True) # For client folders
+os.makedirs(VENDEDORES_FOLDERS_BASE_DIR, exist_ok=True) # For vendor folders
 os.makedirs(CARTERA_DATA_DIR, exist_ok=True) # For cartera data
 os.makedirs(VENCIMIENTOS_DATA_DIR, exist_ok=True) # For vencimientos data
 os.makedirs(PROSPECTOS_DATA_DIR, exist_ok=True) # For prospectos data
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['CLIENT_FOLDERS_BASE_DIR'] = CLIENT_FOLDERS_BASE_DIR
+app.config['VENDEDORES_FOLDERS_BASE_DIR'] = VENDEDORES_FOLDERS_BASE_DIR
 app.config['CARTERA_DATA_DIR'] = CARTERA_DATA_DIR
 app.config['CARTERA_PROCESADA_FILE_PATH'] = os.path.join(CARTERA_DATA_DIR, CARTERA_PROCESADA_FILENAME)
 app.config['VENCIMIENTOS_DATA_DIR'] = VENCIMIENTOS_DATA_DIR
@@ -301,13 +351,13 @@ def formulario_remision():
 
     # These global lists should be defined at the top of app.py
     return render_template('formulario.html',
-                           opciones_aseguradora=config_manager.get_list('aseguradoras'),
-                           opciones_ramo=config_manager.get_list('ramos'),
-                           opciones_tipo_moneda=config_manager.get_list('tipo_moneda'),
-                           opciones_vendedor=config_manager.get_list('vendedores'),
-                           opciones_forma_pago=config_manager.get_list('forma_pago'),
-                           opciones_periodicidad_pago=config_manager.get_list('periodicidad_pago'),
-                           opciones_analista=config_manager.get_list('analistas'),
+                           opciones_aseguradora=OPCIONES_ASEGURADORA,
+                           opciones_ramo=OPCIONES_RAMO_FORMULARIO,
+                           opciones_tipo_moneda=OPCIONES_TIPO_MONEDA,
+                           opciones_vendedor=OPCIONES_VENDEDOR_REMISIONES,
+                           opciones_forma_pago=OPCIONES_FORMA_PAGO,
+                           opciones_periodicidad_pago=OPCIONES_PERIODICIDAD_PAGO,
+                           opciones_analista=OPCIONES_ANALISTA,
                            prospecto=prospecto_data
                           )
 
@@ -696,67 +746,86 @@ def mostrar_formulario_crear_carpeta():
 
 @app.route('/cliente/ejecutar_crear_carpeta', methods=['POST'])
 def ejecutar_crear_carpeta():
-    nombre_cliente = request.form.get('nombre_cliente', 'SIN_NOMBRE').strip()
-    nit_o_cc_cliente = request.form.get('nit_o_cc_cliente', 'SIN_NIT').strip()
-    ano_actual = datetime.now().strftime('%Y')
-    if not nombre_cliente or nombre_cliente == 'SIN_NOMBRE' or not nit_o_cc_cliente or nit_o_cc_cliente == 'SIN_NIT':
-        return jsonify({'success': False, 'message': 'El nombre del cliente y el NIT/CC son obligatorios.'}), 400
-    nombre_carpeta_base_cliente = f"{nombre_cliente}_{nit_o_cc_cliente}"
-    nombre_carpeta_cliente_seguro = secure_filename(nombre_carpeta_base_cliente)
-    if not nombre_carpeta_cliente_seguro:
-        return jsonify({'success': False, 'message': 'El nombre del cliente o NIT/CC generan un nombre de carpeta inválido. Por favor, verifique.'}), 400
-    ruta_cliente_completa = os.path.join(app.config['CLIENT_FOLDERS_BASE_DIR'], nombre_carpeta_cliente_seguro)
-    subcarpetas = [
-        os.path.join("SARLAFT", ano_actual), "POLIZAS", "DOCUMENTOS", "SINIESTROS"
-    ]
     try:
-        if not os.path.exists(ruta_cliente_completa):
-            os.makedirs(ruta_cliente_completa)
-        for subcarpeta_rel in subcarpetas:
-            ruta_sub = os.path.join(ruta_cliente_completa, subcarpeta_rel)
-            os.makedirs(ruta_sub, exist_ok=True)
-        ruta_sarlaft_ano = os.path.join(ruta_cliente_completa, "SARLAFT", ano_actual)
-        os.makedirs(ruta_sarlaft_ano, exist_ok=True)
-        documentos_sarlaft_config = {
-            'doc_cedula': 'Cedula_Representante_legal', 'doc_sarlaft': 'Sarlaft_Cliente',
-            'doc_rut': 'RUT_Cliente', 'doc_declaracion': 'Declaracion_Renta', 'doc_camara': 'Camara_Comercio'
-            , 'estados_financieros': 'Estados_Financieros_Notas', 'consulta_cliente': 'Consulta_Cliente_Desqubra',
-        }
-        archivos_cargados_count = 0
-        for input_name, nombre_base_fijo in documentos_sarlaft_config.items():
-            archivo = request.files.get(input_name)
-            if archivo and archivo.filename:
-                try:
-                    nombre_original_del_archivo_subido = archivo.filename
-                    extension = os.path.splitext(nombre_original_del_archivo_subido)[1].lower()
-                    nombre_archivo_final = nombre_base_fijo + extension
-                    nombre_archivo_seguro = secure_filename(nombre_archivo_final)
-                    ruta_guardado = os.path.join(ruta_sarlaft_ano, nombre_archivo_seguro)
-                    archivo.save(ruta_guardado)
+        tipo_carpeta = request.form.get('tipo_carpeta')
+        nombre_entidad = request.form.get('nombre_entidad', '').strip()
+        nit_o_cc = request.form.get('nit_o_cc', '').strip()
+        ano_actual = datetime.now().strftime('%Y')
+
+        if not tipo_carpeta or not nombre_entidad or not nit_o_cc:
+            return jsonify({'success': False, 'message': 'El tipo de carpeta, nombre y NIT/CC son obligatorios.'}), 400
+
+        nombre_carpeta_base = f"{nombre_entidad}_{nit_o_cc}"
+        nombre_carpeta_seguro = secure_filename(nombre_carpeta_base)
+
+        if not nombre_carpeta_seguro:
+            return jsonify({'success': False, 'message': 'El nombre o NIT/CC generan un nombre de carpeta inválido.'}), 400
+
+        if tipo_carpeta == 'cliente':
+            base_dir = app.config['CLIENT_FOLDERS_BASE_DIR']
+            ruta_completa = os.path.join(base_dir, nombre_carpeta_seguro)
+
+            # Crear estructura de subcarpetas para cliente
+            subcarpetas = [os.path.join("SARLAFT", ano_actual), "POLIZAS", "DOCUMENTOS", "SINIESTROS"]
+            os.makedirs(ruta_completa, exist_ok=True)
+            for sub in subcarpetas:
+                os.makedirs(os.path.join(ruta_completa, sub), exist_ok=True)
+
+            # Procesar archivos SARLAFT
+            ruta_sarlaft_ano = os.path.join(ruta_completa, "SARLAFT", ano_actual)
+            documentos_sarlaft_config = {
+                'doc_cedula': 'Cedula_Representante_legal', 'doc_sarlaft': 'Sarlaft_Cliente',
+                'doc_rut': 'RUT_Cliente', 'doc_declaracion': 'Declaracion_Renta', 'doc_camara': 'Camara_Comercio',
+                'estados_financieros': 'Estados_Financieros_Notas', 'consulta_cliente': 'Consulta_Cliente_Desqubra',
+            }
+            archivos_cargados_count = 0
+            for input_name, nombre_base_fijo in documentos_sarlaft_config.items():
+                archivo = request.files.get(input_name)
+                if archivo and archivo.filename:
+                    extension = os.path.splitext(archivo.filename)[1].lower()
+                    nombre_archivo_final = secure_filename(nombre_base_fijo + extension)
+                    archivo.save(os.path.join(ruta_sarlaft_ano, nombre_archivo_final))
                     archivos_cargados_count += 1
-                except Exception as e_file:
-                    print(f"Error al guardar el archivo {input_name} ({archivo.filename}): {e_file}")
-        mensaje_exito = f'Estructura de carpetas para "{nombre_cliente}" creada/verificada exitosamente.'
-        if archivos_cargados_count > 0:
-            mensaje_exito += f' {archivos_cargados_count} documento(s) SARLAFT procesados.'
-        return jsonify({'success': True, 'message': mensaje_exito}), 200
-    except OSError as e:
-        print(f"Error al crear carpetas para {nombre_cliente}: {e}")
-        return jsonify({'success': False, 'message': f'Error al crear la estructura de carpetas: {e}'}), 500
+
+            mensaje = f'Carpeta de cliente para "{nombre_entidad}" creada. {archivos_cargados_count} documento(s) SARLAFT procesados.'
+
+        elif tipo_carpeta == 'vendedor':
+            base_dir = app.config['VENDEDORES_FOLDERS_BASE_DIR']
+            ruta_completa = os.path.join(base_dir, nombre_carpeta_seguro)
+            os.makedirs(ruta_completa, exist_ok=True)
+
+            # Procesar archivos genéricos para vendedor
+            archivos_vendedor = request.files.getlist('documentos_vendedor[]')
+            archivos_cargados_count = 0
+            for archivo in archivos_vendedor:
+                if archivo and archivo.filename:
+                    filename = secure_filename(archivo.filename)
+                    archivo.save(os.path.join(ruta_completa, filename))
+                    archivos_cargados_count += 1
+
+            mensaje = f'Carpeta de vendedor para "{nombre_entidad}" creada. {archivos_cargados_count} documento(s) subidos.'
+
+        else:
+            return jsonify({'success': False, 'message': 'Tipo de carpeta no válido.'}), 400
+
+        return jsonify({'success': True, 'message': mensaje}), 200
+
     except Exception as e:
-        print(f"Error inesperado al crear carpetas para {nombre_cliente}: {e}")
-        return jsonify({'success': False, 'message': f'Error inesperado al crear carpetas: {e}'}), 500
+        print(f"Error en crear_carpeta_ejecutar: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'Error interno del servidor: {e}'}), 500
 
 @app.route('/prospectos/crear', methods=['GET', 'POST'])
 def crear_prospecto():
     if request.method == 'GET':
         return render_template('prospectos_crear.html',
-                               opciones_responsable_tecnico=config_manager.get_list('responsable_tecnico'),
-                               opciones_responsable_comercial=config_manager.get_list('responsable_comercial'),
-                               opciones_estado=config_manager.get_list('estado_prospecto'),
-                               opciones_ramo=config_manager.get_list('ramos'),
-                               opciones_aseguradora=config_manager.get_list('aseguradoras'),
-                               opciones_vendedor=config_manager.get_list('vendedores'))
+                               opciones_responsable_tecnico=OPCIONES_RESPONSABLE_TECNICO,
+                               opciones_responsable_comercial=OPCIONES_RESPONSABLE_COMERCIAL,
+                               opciones_estado=OPCIONES_ESTADO_PROSPECTO,
+                               opciones_ramo=OPCIONES_RAMO_FORMULARIO,
+                               opciones_aseguradora=OPCIONES_ASEGURADORA,
+                               opciones_vendedor=OPCIONES_VENDEDOR_REMISIONES)
 
     if request.method == 'POST':
         try:
@@ -849,9 +918,9 @@ def prospectos_vista():
 
     return render_template('prospectos_vista.html',
                            prospectos=prospectos_data,
-                           opciones_responsable_tecnico=config_manager.get_list('responsable_tecnico'),
-                           opciones_responsable_comercial=config_manager.get_list('responsable_comercial'),
-                           opciones_estado=config_manager.get_list('estado_prospecto'),
+                           opciones_responsable_tecnico=OPCIONES_RESPONSABLE_TECNICO,
+                           opciones_responsable_comercial=OPCIONES_RESPONSABLE_COMERCIAL,
+                           opciones_estado=OPCIONES_ESTADO_PROSPECTO,
                            kpi_recaudo_mes=kpi_recaudo_mes,
                            kpi_top_ramos=kpi_top_ramos)
 
@@ -871,11 +940,11 @@ def prospecto_editar(prospecto_id):
 
     return render_template('prospectos_editar.html',
                            prospecto=prospecto_data[0],
-                           opciones_responsable_tecnico=config_manager.get_list('responsable_tecnico'),
-                           opciones_responsable_comercial=config_manager.get_list('responsable_comercial'),
-                           opciones_estado=config_manager.get_list('estado_prospecto'),
-                           opciones_ramo=config_manager.get_list('ramos'),
-                           opciones_aseguradora=config_manager.get_list('aseguradoras'))
+                           opciones_responsable_tecnico=OPCIONES_RESPONSABLE_TECNICO,
+                           opciones_responsable_comercial=OPCIONES_RESPONSABLE_COMERCIAL,
+                           opciones_estado=OPCIONES_ESTADO_PROSPECTO,
+                           opciones_ramo=OPCIONES_RAMO_FORMULARIO,
+                           opciones_aseguradora=OPCIONES_ASEGURADORA)
 
 @app.route('/prospectos/guardar_edicion', methods=['POST'])
 def prospecto_guardar_edicion():
@@ -1496,8 +1565,8 @@ def visualizar_vencimientos():
                                 registros=lista_registros,
                                 kpis=kpis,
                                 ramos_kpis=ramos_kpis,
-                                opciones_responsable_js=config_manager.get_list('responsable_vencimientos'),
-                                opciones_estado_js=config_manager.get_list('estado_vencimientos'),
+                                opciones_responsable_js=OPCIONES_RESPONSABLE_VENCIMIENTOS,
+                                opciones_estado_js=OPCIONES_ESTADO_VENCIMIENTOS,
                                 search_term=search_term
                                )
     except Exception as e:
@@ -1914,10 +1983,6 @@ def marcar_cobrado(id_cobro):
         flash('Error: Archivo de cobros no encontrado.', 'danger')
 
     return redirect(url_for('panel_cobros'))
-
-# Registrar el Blueprint de administración
-from admin import admin_bp
-app.register_blueprint(admin_bp)
 
 if __name__ == '__main__':
     try:
