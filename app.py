@@ -148,7 +148,6 @@ ORDEN_COLUMNAS_COBROS = [
     'Fecha_Inicio_Vigencia', 'Fecha_Fin_Vigencia', 'Estado', 'Tipo_Movimiento'
 ]
 
-# --- Remisiones Formulario Constants ---
 # This is the definitive column order for remisiones.xlsx
 # It includes all fields from the form, including calculated ones.
 ORDEN_COLUMNAS_EXCEL_REMISIONES = [
@@ -281,7 +280,7 @@ def cargar_remisiones():
             return []
     return []
 
-@app.route('/', methods=['GET'])
+@app.route('/')
 def index():
     return render_template('index.html')
 

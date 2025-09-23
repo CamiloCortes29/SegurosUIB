@@ -1,49 +1,59 @@
 import os
 import json
 
-# Define la ruta base de la configuración relativa a este archivo.
-# Esto hace que el sistema de configuración sea más robusto.
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-CONFIG_DIR = os.path.join(BASE_DIR, 'config')
-
-# Asegurarse de que el directorio de configuración exista.
-os.makedirs(CONFIG_DIR, exist_ok=True)
-
-def get_list_names():
-    """
-    Escanea el directorio de configuración y devuelve los nombres base de los
-    archivos JSON (que corresponden a los nombres de las listas).
-    """
-    try:
-        files = [f for f in os.listdir(CONFIG_DIR) if f.endswith('.json')]
-        # Devuelve el nombre del archivo sin la extensión .json
-        return [os.path.splitext(f)[0] for f in files]
-    except FileNotFoundError:
-        return []
+# Define la ruta base del directorio de configuración
+CONFIG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config')
 
 def get_list(list_name):
     """
-    Carga y devuelve una lista desde su archivo JSON correspondiente.
-    El nombre de la lista corresponde al nombre del archivo sin la extensión .json.
+    Carga y devuelve una lista desde un archivo JSON en el directorio de configuración.
     """
-    file_path = os.path.join(CONFIG_DIR, f"{list_name}.json")
+    # Asegurarse de que el directorio de configuración exista
+    if not os.path.exists(CONFIG_DIR):
+        os.makedirs(CONFIG_DIR)
+
+    filepath = os.path.join(CONFIG_DIR, f"{list_name}.json")
+
+    # Si el archivo no existe, crearlo con una lista vacía
+    if not os.path.exists(filepath):
+        save_list(list_name, [])
+        return []
+
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(filepath, 'r', encoding='utf-8') as f:
             return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        # Si el archivo no se encuentra o está corrupto, devuelve una lista vacía.
+    except (json.JSONDecodeError, FileNotFoundError):
+        # Si hay un error de decodificación o el archivo no se encuentra,
+        # devolver una lista vacía para evitar que la aplicación falle.
         return []
 
 def save_list(list_name, data):
     """
-    Guarda una lista (data) en su archivo JSON correspondiente.
-    Sobrescribe el archivo si ya existe.
+    Guarda una lista en un archivo JSON en el directorio de configuración.
     """
-    file_path = os.path.join(CONFIG_DIR, f"{list_name}.json")
+    # Asegurarse de que el directorio de configuración exista
+    if not os.path.exists(CONFIG_DIR):
+        os.makedirs(CONFIG_DIR)
+
+    filepath = os.path.join(CONFIG_DIR, f"{list_name}.json")
     try:
-        with open(file_path, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=4)
+        with open(filepath, 'w', encoding='utf-8') as f:
+            # Usar indent=4 para que el JSON sea legible
+            # ensure_ascii=False para guardar correctamente caracteres como tildes
+            json.dump(data, f, indent=4, ensure_ascii=False)
         return True
     except Exception as e:
-        print(f"Error al guardar la lista '{list_name}' en {file_path}: {e}")
+        print(f"Error al guardar la lista '{list_name}': {e}")
         return False
+
+def get_all_list_names():
+    """
+    Devuelve los nombres de todos los archivos JSON (listas) disponibles
+    en el directorio de configuración.
+    """
+    if not os.path.exists(CONFIG_DIR):
+        return []
+
+    # Listar todos los archivos, filtrar por .json y quitar la extensión
+    files = [f.replace('.json', '') for f in os.listdir(CONFIG_DIR) if f.endswith('.json')]
+    return sorted(files)
