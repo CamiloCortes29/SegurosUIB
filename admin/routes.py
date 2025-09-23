@@ -72,8 +72,10 @@ def edit_list_item(list_name):
                 if nombre.strip():
                     items.append({'nombre': nombre.strip(), 'comision': comision.strip() or '0'})
         else:
-            items_str = request.form.get('items')
-            items = [item.strip() for item in items_str.split('\n') if item.strip()]
+            # Manejar la lista de ítems de la tabla
+            items = request.form.getlist('item')
+            # Filtrar valores vacíos para que puedan ser eliminados al guardar
+            items = [item.strip() for item in items if item.strip()]
 
         if config_manager.save_list(list_name, items):
             flash(f"Lista '{list_name}' guardada con éxito.", 'success')
