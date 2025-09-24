@@ -7,7 +7,7 @@ import config_manager
 admin_bp = Blueprint(
     'admin',
     __name__,
-    template_folder='templates/admin', # Apuntar a la subcarpeta correcta
+    template_folder='templates', # Apuntar al directorio de plantillas principal
     url_prefix='/admin'
 )
 
@@ -36,7 +36,7 @@ def login():
             return redirect(url_for('admin.dashboard'))
         else:
             flash('Contraseña incorrecta.', 'danger')
-    return render_template('login.html')
+    return render_template('admin/login.html')
 
 @admin_bp.route('/logout')
 @admin_required
@@ -49,13 +49,13 @@ def logout():
 @admin_bp.route('/')
 @admin_required
 def dashboard():
-    return render_template('dashboard.html')
+    return render_template('admin/dashboard.html')
 
 @admin_bp.route('/listas')
 @admin_required
 def listas():
     list_names = config_manager.get_all_list_names()
-    return render_template('listas.html', list_names=list_names)
+    return render_template('admin/listas.html', list_names=list_names)
 
 @admin_bp.route('/listas/editar/<list_name>', methods=['GET', 'POST'])
 @admin_required
@@ -95,7 +95,7 @@ def edit_list_item(list_name):
 
     if list_name == 'vendedores':
         # Renderizar la plantilla específica para vendedores
-        return render_template('editar_vendedores.html', list_name=list_name, items=items)
+        return render_template('admin/editar_vendedores.html', list_name=list_name, items=items)
     else:
         # Renderizar la plantilla genérica para listas simples
-        return render_template('editar_lista_simple.html', list_name=list_name, items=items)
+        return render_template('admin/editar_lista_simple.html', list_name=list_name, items=items)

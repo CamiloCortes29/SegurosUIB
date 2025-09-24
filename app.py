@@ -156,7 +156,7 @@ ORDEN_COLUMNAS_EXCEL_REMISIONES = [
     # Checkboxes
     'renovacion', 'negocio_nuevo', 'renovable', 'modificacion', 'anexo', 'policy_number_modified',
     # Datos Básicos
-    'fecha_recepcion', 'tomador', 'nit', 'aseguradora', 'ramo', 'poliza', 'old_policy_number', 'anexo',
+    'fecha_recepcion', 'tomador', 'nit', 'aseguradora', 'ramo', 'poliza', 'old_policy_number',
     'categorias_grupo', 'categorias_grupo_otro', # Handling for "Otro"
     'fecha_inicio', 'fecha_fin', 'fecha_limite_pago',
 
@@ -327,7 +327,7 @@ def registrar():
 
         # Collect all other text/select form fields
         form_fields_to_collect = [
-            'fecha_recepcion', 'tomador', 'nit', 'aseguradora', 'ramo', 'poliza', 'old_policy_number', 'anexo',
+            'fecha_recepcion', 'tomador', 'nit', 'aseguradora', 'ramo', 'poliza', 'old_policy_number',
             'categorias_grupo', 'categorias_grupo_otro',
             'fecha_inicio', 'fecha_fin', 'fecha_limite_pago',
             'tipo_moneda',
