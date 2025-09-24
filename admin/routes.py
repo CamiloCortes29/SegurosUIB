@@ -1,3 +1,4 @@
+import os
 from functools import wraps
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 import config_manager
@@ -6,7 +7,7 @@ import config_manager
 admin_bp = Blueprint(
     'admin',
     __name__,
-    template_folder='templates',
+    template_folder='templates/admin', # Apuntar a la subcarpeta correcta
     url_prefix='/admin'
 )
 
@@ -24,16 +25,18 @@ def admin_required(f):
 @admin_bp.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        # En una aplicación real, verificaría un usuario y contraseña hasheados
-        # Aquí, usaremos una verificación simple por simplicidad
+        # La contraseña se obtiene de una variable de entorno para seguridad.
+        # El valor por defecto 'AdminUIB' se usa solo para desarrollo si la variable no está configurada.
+        admin_password = os.environ.get('ADMIN_PASSWORD', 'AdminUIB')
         password = request.form.get('password')
-        if password == 'AdminUIB': # Contraseña simple para el ejercicio
+
+        if password == admin_password:
             session['admin_logged_in'] = True
             flash('Inicio de sesión exitoso.', 'success')
             return redirect(url_for('admin.dashboard'))
         else:
             flash('Contraseña incorrecta.', 'danger')
-    return render_template('admin/login.html')
+    return render_template('login.html')
 
 @admin_bp.route('/logout')
 @admin_required
@@ -46,13 +49,13 @@ def logout():
 @admin_bp.route('/')
 @admin_required
 def dashboard():
-    return render_template('admin/dashboard.html')
+    return render_template('dashboard.html')
 
 @admin_bp.route('/listas')
 @admin_required
 def listas():
     list_names = config_manager.get_all_list_names()
-    return render_template('admin/listas.html', list_names=list_names)
+    return render_template('listas.html', list_names=list_names)
 
 @admin_bp.route('/listas/editar/<list_name>', methods=['GET', 'POST'])
 @admin_required
@@ -92,7 +95,7 @@ def edit_list_item(list_name):
 
     if list_name == 'vendedores':
         # Renderizar la plantilla específica para vendedores
-        return render_template('admin/editar_vendedores.html', list_name=list_name, items=items)
+        return render_template('editar_vendedores.html', list_name=list_name, items=items)
     else:
         # Renderizar la plantilla genérica para listas simples
-        return render_template('admin/editar_lista_simple.html', list_name=list_name, items=items)
+        return render_template('editar_lista_simple.html', list_name=list_name, items=items)

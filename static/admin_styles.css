@@ -269,6 +269,18 @@ textarea.form-control {
     background-color: #2980b9;
 }
 
+.btn-danger {
+    background-color: #e74c3c;
+    color: white;
+}
+.btn-danger:hover {
+    background-color: #c0392b;
+}
+
+.btn-sm {
+    padding: 5px 10px;
+    font-size: 0.875em;
+}
 
 .table {
     width: 100%;
