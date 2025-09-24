@@ -45,8 +45,8 @@
                             <label for="modificacion"><i class="fas fa-edit"></i> Es Modificación</label>
                         </div>
                         <div class="form-group form-group-checkbox">
-                            <input type="checkbox" name="anexo_checkbox" id="anexo_checkbox" value="si">
-                            <label for="anexo_checkbox"><i class="fas fa-paperclip"></i> Es Anexo</label>
+                            <input type="checkbox" name="anexo" id="anexo" value="si">
+                            <label for="anexo"><i class="fas fa-paperclip"></i> Es Anexo</label>
                         </div>
                     </div>
                     <!-- Section for policy number modification on renewal -->
@@ -488,18 +488,24 @@
             const porcCoCorretajeInput = document.getElementById('co_corretaje_porcentaje');
             const comisionTppInput = document.getElementById('comision_tpp');
             const participacionUibInput = document.getElementById('uib');
+            const porcParticipacionVendedorInput = document.getElementById('porcentaje_vendedor');
 
             function calcularComisiones() {
                 const primaNeta = parseFloat(primaNetaInput.value.replace(/\$|\./g, '').replace(',', '.')) || 0;
                 const porcComision = parseFloat(porcComisionInput.value) || 0;
-                const porcCoCorretaje = parseFloat(porcCoCorretajeInput.value) || 0;
+                const porcParticipacion = parseFloat(porcParticipacionVendedorInput.value) || 0;
 
                 const comisionTotal = primaNeta * (porcComision / 100);
                 comisionCalculadaInput.value = '$' + Math.round(comisionTotal).toLocaleString('es-CO');
 
                 let comisionTpp = 0;
-                if (coCorretajeSelect.value === 'si' && porcCoCorretaje > 0) {
+                if (coCorretajeSelect.value === 'si') {
+                    // Si hay co-corretaje, TPP es un % de la comisión total
+                    const porcCoCorretaje = parseFloat(porcCoCorretajeInput.value) || 0;
                     comisionTpp = comisionTotal * (porcCoCorretaje / 100);
+                } else if (porcParticipacion > 0 && porcParticipacion < 100) {
+                    // Si no hay co-corretaje pero sí participación de vendedor
+                    comisionTpp = comisionTotal * (porcParticipacion / 100);
                 }
 
                 comisionTppInput.value = '$' + Math.round(comisionTpp).toLocaleString('es-CO');
@@ -507,7 +513,7 @@
                 participacionUibInput.value = '$' + Math.round(comisionUib).toLocaleString('es-CO');
             }
 
-            [primaNetaInput, porcComisionInput, porcCoCorretajeInput, coCorretajeSelect].forEach(input => {
+            [primaNetaInput, porcComisionInput, porcCoCorretajeInput, coCorretajeSelect, porcParticipacionVendedorInput].forEach(input => {
                 if(input) input.addEventListener('input', calcularComisiones);
             });
 
@@ -621,15 +627,15 @@
 
             // --- Lógica para autocompletar comisión de vendedor ---
             const vendedorSelect = document.getElementById('vendedor');
-            const porcComisionInput = document.getElementById('porcentaje_comision_valor');
+            const porcParticipacionVendedorInput = document.getElementById('porcentaje_vendedor');
 
-            if (vendedorSelect && porcComisionInput) {
+            if (vendedorSelect && porcParticipacionVendedorInput) {
                 vendedorSelect.addEventListener('change', function() {
                     const selectedOption = this.options[this.selectedIndex];
                     const comision = selectedOption.dataset.comision;
 
-                    porcComisionInput.value = comision || '';
-                    porcComisionInput.dispatchEvent(new Event('input'));
+                    porcParticipacionVendedorInput.value = comision || '';
+                    porcParticipacionVendedorInput.dispatchEvent(new Event('input'));
                 });
             }
 

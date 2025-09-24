@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 import uuid
 import config_manager
+from admin.routes import admin_bp
 
 def limpiar_valor_moneda(valor_str):
     """
@@ -52,7 +53,7 @@ def get_year_from_date(date_str):
             return None
 
 app = Flask(__name__) # Ensure app instance is created
-app.config['SECRET_KEY'] = 'dev_super_secret_key_12345_replace_in_production'
+app.config['SECRET_KEY'] = os.environ.get('FLASK_SECRET_KEY', 'dev_super_secret_key_12345_replace_in_production')
 
 # Rutas BASE_DIR debe estar al nivel de donde corre app.py
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -153,7 +154,7 @@ ORDEN_COLUMNAS_COBROS = [
 ORDEN_COLUMNAS_EXCEL_REMISIONES = [
     'consecutivo', 'estado', 'fecha_registro', # Automatic fields
     # Checkboxes
-    'renovacion', 'negocio_nuevo', 'renovable', 'modificacion', 'anexo_checkbox', 'policy_number_modified',
+    'renovacion', 'negocio_nuevo', 'renovable', 'modificacion', 'anexo', 'policy_number_modified',
     # Datos Básicos
     'fecha_recepcion', 'tomador', 'nit', 'aseguradora', 'ramo', 'poliza', 'old_policy_number', 'anexo',
     'categorias_grupo', 'categorias_grupo_otro', # Handling for "Otro"
@@ -320,11 +321,9 @@ def registrar():
         # --- 1. Collect and Clean Data ---
 
         # Handle checkboxes
-        checkbox_fields = ['renovacion', 'negocio_nuevo', 'renovable', 'modificacion', 'policy_number_modified']
+        checkbox_fields = ['renovacion', 'negocio_nuevo', 'renovable', 'modificacion', 'anexo', 'policy_number_modified']
         for field in checkbox_fields:
             datos[field] = "si" if field in datos_formulario else "no"
-        # Handle anexo checkbox separately to avoid name conflict
-        datos['anexo_checkbox'] = "si" if 'anexo_checkbox' in datos_formulario else "no"
 
         # Collect all other text/select form fields
         form_fields_to_collect = [
@@ -875,7 +874,8 @@ def prospecto_editar(prospecto_id):
                            opciones_responsable_comercial=config_manager.get_list('responsable_comercial'),
                            opciones_estado=config_manager.get_list('estado_prospecto'),
                            opciones_ramo=config_manager.get_list('ramos'),
-                           opciones_aseguradora=config_manager.get_list('aseguradoras'))
+                           opciones_aseguradora=config_manager.get_list('aseguradoras'),
+                           opciones_vendedor=config_manager.get_list('vendedores'))
 
 @app.route('/prospectos/guardar_edicion', methods=['POST'])
 def prospecto_guardar_edicion():
@@ -1915,8 +1915,6 @@ def marcar_cobrado(id_cobro):
 
     return redirect(url_for('panel_cobros'))
 
-# Registrar el Blueprint de administración
-from admin.routes import admin_bp
 app.register_blueprint(admin_bp)
 
 if __name__ == '__main__':

@@ -6,7 +6,7 @@
     <title>Editar Prospecto - UIB</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="/static/prospectos_styles.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='prospectos_styles.css') }}">
 </head>
 <body>
     <div class="form-container">
@@ -111,7 +111,12 @@
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="nombre_tpp">Nombre TPP</label>
-                                <input type="text" id="nombre_tpp" name="Nombre_TPP" value="{{ prospecto.Nombre_TPP }}">
+                                <select id="nombre_tpp" name="Nombre_TPP">
+                                    <option value="">Seleccione Vendedor...</option>
+                                    {% for vendedor in opciones_vendedor %}
+                                    <option value="{{ vendedor.nombre }}" data-comision="{{ vendedor.comision }}" {% if vendedor.nombre == prospecto.Nombre_TPP %}selected{% endif %}>{{ vendedor.nombre }}</option>
+                                    {% endfor %}
+                                </select>
                             </div>
                             <div class="form-group">
                                 <label for="porcentaje_comision_tpp">Porcentaje Comisión TPP</label>
@@ -155,6 +160,7 @@
         const comisionValorInput = document.getElementById('comision_valor');
         const esTppSelect = document.getElementById('es_tpp');
         const tppDetails = document.getElementById('tpp-details');
+        const nombreTppSelect = document.getElementById('nombre_tpp');
         const porcentajeTppInput = document.getElementById('porcentaje_comision_tpp');
         // El formulario de edición no tiene un campo para el valor de TPP, así que lo omitimos por ahora.
         // Si se necesitara, se añadiría aquí: const valorTppInput = document.getElementById('valor_comision_tpp');
@@ -170,7 +176,7 @@
         }
 
         function calcularComision() {
-            const prima = parseFloat(primaInput.value.replace(/\$|\./g, '')) || 0;
+            const prima = parseFloat(primaInput.value.replace(/\$|\./g, '').replace(',', '.')) || 0;
             const porcentaje = parseFloat(comisionPorcentajeInput.value) || 0;
             let comisionCalculadaBruta = prima * (porcentaje / 100);
             let comisionFinal = comisionCalculadaBruta;
@@ -182,12 +188,7 @@
                 comisionFinal -= valorTpp;
             }
             
-            comisionValorInput.value = comisionFinal.toLocaleString('es-CO', {
-                style: 'currency',
-                currency: 'COP',
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0
-            });
+            comisionValorInput.value = '$' + Math.round(comisionFinal).toLocaleString('es-CO');
         }
 
         // Formatear el valor inicial de la prima al cargar la página
@@ -207,6 +208,18 @@
         
         // Calcular comisiones con los valores iniciales al cargar la página
         calcularComision();
+
+        // --- Lógica para autocompletar comisión de TPP ---
+        if (nombreTppSelect && porcentajeTppInput) {
+            nombreTppSelect.addEventListener('change', function() {
+                const selectedOption = this.options[this.selectedIndex];
+                const comision = selectedOption.dataset.comision;
+
+                porcentajeTppInput.value = comision || '';
+                // Disparar evento 'input' para que se recalcule la comisión
+                porcentajeTppInput.dispatchEvent(new Event('input'));
+            });
+        }
     });
     </script>
 </body>

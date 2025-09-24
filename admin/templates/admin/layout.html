@@ -18,7 +18,7 @@
                 <a href="{{ url_for('admin.dashboard') }}" class="nav-item {% if request.endpoint == 'admin.dashboard' %}active{% endif %}">
                     <i class="fas fa-tachometer-alt"></i> Dashboard
                 </a>
-                <a href="{{ url_for('admin.listas') }}" class="nav-item {% if 'listas' in request.endpoint %}active{% endif %}">
+                <a href="{{ url_for('admin.listas') }}" class="nav-item {% if 'listas' in request.endpoint or 'edit_list_item' in request.endpoint %}active{% endif %}">
                     <i class="fas fa-list-alt"></i> Gestionar Listas
                 </a>
                  <a href="{{ url_for('index') }}" class="nav-item">
