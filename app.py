@@ -59,6 +59,7 @@ UPLOAD_FOLDER = os.path.join(BASE_DIR, 'archivos_subidos')
 CONSECUTIVO_FILE = os.path.join(BASE_DIR, 'consecutivo.txt')
 EXCEL_FILE = os.path.join(BASE_DIR, 'remisiones.xlsx')
 CLIENT_FOLDERS_BASE_DIR = os.path.join(BASE_DIR, 'CLIENTES_CARPETAS')
+VENDEDOR_FOLDERS_BASE_DIR = os.path.join(BASE_DIR, 'VENDEDORES_CARPETAS')
 CARTERA_DATA_DIR_NAME = 'DATOS_CARTERA' # Folder name
 CARTERA_DATA_DIR = os.path.join(BASE_DIR, CARTERA_DATA_DIR_NAME)
 CARTERA_PROCESADA_FILENAME = 'cartera_procesada.xlsx'
@@ -230,11 +231,13 @@ ORDEN_COLUMNAS_EXCEL_REMISIONES = [
 # Configurar carpeta de carga
 os.makedirs(UPLOAD_FOLDER, exist_ok=True) # For remision attachments
 os.makedirs(CLIENT_FOLDERS_BASE_DIR, exist_ok=True) # For client folders
+os.makedirs(VENDEDOR_FOLDERS_BASE_DIR, exist_ok=True) # For vendor folders
 os.makedirs(CARTERA_DATA_DIR, exist_ok=True) # For cartera data
 os.makedirs(VENCIMIENTOS_DATA_DIR, exist_ok=True) # For vencimientos data
 os.makedirs(PROSPECTOS_DATA_DIR, exist_ok=True) # For prospectos data
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['CLIENT_FOLDERS_BASE_DIR'] = CLIENT_FOLDERS_BASE_DIR
+app.config['VENDEDOR_FOLDERS_BASE_DIR'] = VENDEDOR_FOLDERS_BASE_DIR
 app.config['CARTERA_DATA_DIR'] = CARTERA_DATA_DIR
 app.config['CARTERA_PROCESADA_FILE_PATH'] = os.path.join(CARTERA_DATA_DIR, CARTERA_PROCESADA_FILENAME)
 app.config['VENCIMIENTOS_DATA_DIR'] = VENCIMIENTOS_DATA_DIR
@@ -736,63 +739,77 @@ def guardar_numero_remision():
         return f"Error: No se encontró la remisión con consecutivo {consecutivo_a_actualizar} para actualizar. Es posible que haya sido eliminada.", 404
     return redirect(url_for('control'))
 
-@app.route('/cliente/formulario_crear_carpeta', methods=['GET'])
+@app.route('/formulario_crear_carpeta', methods=['GET'])
 def mostrar_formulario_crear_carpeta():
     ano_actual = datetime.now().strftime('%Y')
-    return render_template('crear_carpeta_cliente.html', ano_actual=ano_actual)
+    return render_template('crear_carpeta.html', ano_actual=ano_actual)
 
-@app.route('/cliente/ejecutar_crear_carpeta', methods=['POST'])
+@app.route('/ejecutar_crear_carpeta', methods=['POST'])
 def ejecutar_crear_carpeta():
-    nombre_cliente = request.form.get('nombre_cliente', 'SIN_NOMBRE').strip()
-    nit_o_cc_cliente = request.form.get('nit_o_cc_cliente', 'SIN_NIT').strip()
+    tipo_carpeta = request.form.get('tipo_carpeta')
+    nombre_entidad = request.form.get('nombre_entidad', 'SIN_NOMBRE').strip()
+    nit_entidad = request.form.get('nit_entidad', 'SIN_NIT').strip()
     ano_actual = datetime.now().strftime('%Y')
-    if not nombre_cliente or nombre_cliente == 'SIN_NOMBRE' or not nit_o_cc_cliente or nit_o_cc_cliente == 'SIN_NIT':
-        return jsonify({'success': False, 'message': 'El nombre del cliente y el NIT/CC son obligatorios.'}), 400
-    nombre_carpeta_base_cliente = f"{nombre_cliente}_{nit_o_cc_cliente}"
-    nombre_carpeta_cliente_seguro = secure_filename(nombre_carpeta_base_cliente)
-    if not nombre_carpeta_cliente_seguro:
-        return jsonify({'success': False, 'message': 'El nombre del cliente o NIT/CC generan un nombre de carpeta inválido. Por favor, verifique.'}), 400
-    ruta_cliente_completa = os.path.join(app.config['CLIENT_FOLDERS_BASE_DIR'], nombre_carpeta_cliente_seguro)
-    subcarpetas = [
-        os.path.join("SARLAFT", ano_actual), "POLIZAS", "DOCUMENTOS", "SINIESTROS"
-    ]
-    try:
-        if not os.path.exists(ruta_cliente_completa):
-            os.makedirs(ruta_cliente_completa)
-        for subcarpeta_rel in subcarpetas:
-            ruta_sub = os.path.join(ruta_cliente_completa, subcarpeta_rel)
-            os.makedirs(ruta_sub, exist_ok=True)
-        ruta_sarlaft_ano = os.path.join(ruta_cliente_completa, "SARLAFT", ano_actual)
-        os.makedirs(ruta_sarlaft_ano, exist_ok=True)
-        documentos_sarlaft_config = {
-            'doc_cedula': 'Cedula_Representante_legal', 'doc_sarlaft': 'Sarlaft_Cliente',
-            'doc_rut': 'RUT_Cliente', 'doc_declaracion': 'Declaracion_Renta', 'doc_camara': 'Camara_Comercio'
-            , 'estados_financieros': 'Estados_Financieros_Notas', 'consulta_cliente': 'Consulta_Cliente_Desqubra',
-        }
-        archivos_cargados_count = 0
-        for input_name, nombre_base_fijo in documentos_sarlaft_config.items():
-            archivo = request.files.get(input_name)
-            if archivo and archivo.filename:
-                try:
-                    nombre_original_del_archivo_subido = archivo.filename
-                    extension = os.path.splitext(nombre_original_del_archivo_subido)[1].lower()
+
+    if not nombre_entidad or nombre_entidad == 'SIN_NOMBRE' or not nit_entidad or nit_entidad == 'SIN_NIT':
+        return jsonify({'success': False, 'message': 'El nombre y el NIT/CC son obligatorios.'}), 400
+
+    nombre_carpeta_base = f"{nombre_entidad}_{nit_entidad}"
+    nombre_carpeta_seguro = secure_filename(nombre_carpeta_base)
+
+    if not nombre_carpeta_seguro:
+        return jsonify({'success': False, 'message': 'El nombre o NIT/CC generan un nombre de carpeta inválido.'}), 400
+
+    if tipo_carpeta == 'cliente':
+        ruta_base = app.config['CLIENT_FOLDERS_BASE_DIR']
+        ruta_completa = os.path.join(ruta_base, nombre_carpeta_seguro)
+        subcarpetas = [os.path.join("SARLAFT", ano_actual), "POLIZAS", "DOCUMENTOS", "SINIESTROS"]
+        try:
+            if not os.path.exists(ruta_completa):
+                os.makedirs(ruta_completa)
+            for subcarpeta_rel in subcarpetas:
+                os.makedirs(os.path.join(ruta_completa, subcarpeta_rel), exist_ok=True)
+
+            ruta_sarlaft_ano = os.path.join(ruta_completa, "SARLAFT", ano_actual)
+            documentos_sarlaft_config = {
+                'doc_cedula': 'Cedula_Representante_legal', 'doc_sarlaft': 'Sarlaft_Cliente',
+                'doc_rut': 'RUT_Cliente', 'doc_declaracion': 'Declaracion_Renta', 'doc_camara': 'Camara_Comercio',
+                'estados_financieros': 'Estados_Financieros_Notas', 'consulta_cliente': 'Consulta_Cliente_Desqubra',
+            }
+            archivos_cargados_count = 0
+            for input_name, nombre_base_fijo in documentos_sarlaft_config.items():
+                archivo = request.files.get(input_name)
+                if archivo and archivo.filename:
+                    extension = os.path.splitext(archivo.filename)[1].lower()
                     nombre_archivo_final = nombre_base_fijo + extension
-                    nombre_archivo_seguro = secure_filename(nombre_archivo_final)
-                    ruta_guardado = os.path.join(ruta_sarlaft_ano, nombre_archivo_seguro)
+                    ruta_guardado = os.path.join(ruta_sarlaft_ano, secure_filename(nombre_archivo_final))
                     archivo.save(ruta_guardado)
                     archivos_cargados_count += 1
-                except Exception as e_file:
-                    print(f"Error al guardar el archivo {input_name} ({archivo.filename}): {e_file}")
-        mensaje_exito = f'Estructura de carpetas para "{nombre_cliente}" creada/verificada exitosamente.'
-        if archivos_cargados_count > 0:
-            mensaje_exito += f' {archivos_cargados_count} documento(s) SARLAFT procesados.'
-        return jsonify({'success': True, 'message': mensaje_exito}), 200
-    except OSError as e:
-        print(f"Error al crear carpetas para {nombre_cliente}: {e}")
-        return jsonify({'success': False, 'message': f'Error al crear la estructura de carpetas: {e}'}), 500
-    except Exception as e:
-        print(f"Error inesperado al crear carpetas para {nombre_cliente}: {e}")
-        return jsonify({'success': False, 'message': f'Error inesperado al crear carpetas: {e}'}), 500
+            mensaje_exito = f'Estructura de carpetas para cliente "{nombre_entidad}" creada/verificada.'
+            if archivos_cargados_count > 0:
+                mensaje_exito += f' {archivos_cargados_count} documento(s) SARLAFT procesados.'
+            return jsonify({'success': True, 'message': mensaje_exito}), 200
+        except Exception as e:
+            return jsonify({'success': False, 'message': f'Error al crear carpetas de cliente: {e}'}), 500
+
+    elif tipo_carpeta == 'vendedor':
+        ruta_base = app.config['VENDEDOR_FOLDERS_BASE_DIR']
+        ruta_completa = os.path.join(ruta_base, nombre_carpeta_seguro)
+        try:
+            os.makedirs(ruta_completa, exist_ok=True)
+            archivos = request.files.getlist("documentos_vendedor[]")
+            archivos_cargados_count = 0
+            for archivo in archivos:
+                if archivo and archivo.filename:
+                    filename = secure_filename(archivo.filename)
+                    archivo.save(os.path.join(ruta_completa, filename))
+                    archivos_cargados_count += 1
+            mensaje_exito = f'Carpeta para vendedor "{nombre_entidad}" creada. {archivos_cargados_count} documento(s) subidos.'
+            return jsonify({'success': True, 'message': mensaje_exito}), 200
+        except Exception as e:
+            return jsonify({'success': False, 'message': f'Error al crear carpeta de vendedor: {e}'}), 500
+    else:
+        return jsonify({'success': False, 'message': 'Tipo de carpeta no válido.'}), 400
 
 @app.route('/prospectos/crear', methods=['GET', 'POST'])
 def crear_prospecto():
