@@ -46,7 +46,7 @@
                         </div>
                         <div class="form-group form-group-checkbox">
                             <input type="checkbox" name="anexo" id="anexo" value="si">
-                            <label for="anexo"><i class="fas fa-edit"></i> Es Anexo</label>
+                            <label for="anexo"><i class="fas fa-paperclip"></i> Es Anexo</label>
                         </div>
                     </div>
                     <!-- Section for policy number modification on renewal -->
@@ -67,7 +67,7 @@
                         </div>
                         <div class="form-group">
                             <label for="tomador"><i class="fas fa-user"></i> Tomador</label>
-                            <input type="text" name="tomador" id="tomador" placeholder="Nombre del tomador" required>
+                            <input type="text" name="tomador" id="tomador" placeholder="Nombre del tomador" required value="{{ prospecto.tomador if prospecto else '' }}">
                         </div>
                         <div class="form-group">
                             <label for="nit"><i class="fas fa-id-card"></i> NIT / CC</label>
@@ -80,7 +80,7 @@
                             <select name="aseguradora" id="aseguradora" required>
                                 <option value="">Seleccione Aseguradora...</option>
                                 {% for opt in opciones_aseguradora %}
-                                <option value="{{ opt }}">{{ opt }}</option>
+                                <option value="{{ opt }}" {% if prospecto and prospecto.aseguradora == opt %}selected{% endif %}>{{ opt }}</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -89,17 +89,17 @@
                             <select name="ramo" id="ramo" required>
                                 <option value="">Seleccione Ramo...</option>
                                 {% for opt in opciones_ramo %}
-                                <option value="{{ opt }}">{{ opt }}</option>
+                                <option value="{{ opt }}" {% if prospecto and prospecto.ramo == opt %}selected{% endif %}>{{ opt }}</option>
                                 {% endfor %}
                             </select>
                         </div>
                         <div class="form-group">
                             <label for="poliza"><i class="fas fa-file-alt"></i> N° Póliza</label>
-                            <input type="text" name="poliza" id="poliza" placeholder="Número de póliza" required>
+                            <input type="text" name="poliza" id="poliza" placeholder="Número de póliza" required value="{{ prospecto.poliza if prospecto else '' }}">
                         </div>
                         <div class="form-group">
-                            <label for="anexo"><i class="fas fa-paperclip"></i> Anexo / Certificado</label>
-                            <input type="text" name="anexo" id="anexo" placeholder="Número de anexo">
+                            <label for="anexo_input"><i class="fas fa-paperclip"></i> Anexo / Certificado</label>
+                            <input type="text" name="anexo" id="anexo_input" placeholder="Número de anexo">
                         </div>
                         <div class="form-group">
                             <label for="categorias_grupo"><i class="fas fa-tags"></i> Categorías / Grupo</label>
@@ -146,19 +146,19 @@
                         </div>
                         <div class="form-group">
                             <label for="prima_neta"><i class="fas fa-money-bill-wave"></i> Prima Neta</label>
-                            <input type="text" name="prima_neta" id="prima_neta" class="currency" placeholder="0,00" required>
+                            <input type="text" name="prima_neta" id="prima_neta" class="currency" placeholder="0" required value="{{ prospecto.prima_neta if prospecto else '' }}">
                         </div>
                         <div class="form-group">
                             <label for="gastos_adicionales"><i class="fas fa-receipt"></i> Gastos Adicionales</label>
-                            <input type="text" name="gastos_adicionales" id="gastos_adicionales" class="currency" placeholder="0,00">
+                            <input type="text" name="gastos_adicionales" id="gastos_adicionales" class="currency" placeholder="0">
                         </div>
                         <div class="form-group">
                             <label for="porcentaje_comision_valor"><i class="fas fa-percentage"></i> % Comisión</label>
-                            <input type="text" name="porcentaje_comision_valor" id="porcentaje_comision_valor" placeholder="0.00" required>
+                            <input type="number" name="porcentaje_comision_valor" id="porcentaje_comision_valor" placeholder="0.00" step="0.01" required>
                         </div>
                         <div class="form-group">
                             <label for="comision_calculada"><i class="fas fa-dollar-sign"></i> Comision$</label>
-                            <input type="text" name="comision_calculada" id="comision_calculada" class="currency" placeholder="0,00" readonly>
+                            <input type="text" name="Comision$" id="comision_calculada" class="currency" placeholder="0" readonly>
                         </div>
                     </div>
                     <div class="form-row">
@@ -166,31 +166,37 @@
                             <label for="vendedor"><i class="fas fa-user-tie"></i> Vendedor</label>
                              <select name="vendedor" id="vendedor" required>
                                 <option value="">Seleccione Vendedor...</option>
-                                {% for opt in opciones_vendedor %}
-                                <option value="{{ opt }}">{{ opt }}</option>
+                                {% for vendedor in opciones_vendedor %}
+                                <option value="{{ vendedor.nombre }}" data-comision="{{ vendedor.comision }}">{{ vendedor.nombre }}</option>
                                 {% endfor %}
                             </select>
                         </div>
                         <div class="form-group">
                             <label for="porcentaje_vendedor"><i class="fas fa-percentage"></i> % Participación Vendedor</label>
-                            <input type="text" name="porcentaje_vendedor" id="porcentaje_vendedor" placeholder="0.00">
+                            <input type="number" name="porcentaje_vendedor" id="porcentaje_vendedor" placeholder="0.00" step="0.01">
                         </div>
-                        <div class="form-group">
-                            <label for="comision_tpp"><i class="fas fa-hand-holding-usd"></i> ComisionTPP</label>
-                            <input type="text" name="comision_tpp" id="comision_tpp" class="currency" placeholder="0,00" readonly>
-                        </div>
-                        <div class="form-group">
-                            <label for="uib"><i class="fas fa-building"></i> ComisionUIB</label>
-                            <input type="text" name="uib" id="uib" placeholder="0,00" class="currency" readonly>
-                        </div>
-                    </div>
-                    <div class="form-row">
                         <div class="form-group">
                             <label for="co_corretaje_opcion"><i class="fas fa-handshake"></i> Aplica Co-corretaje</label>
                             <select name="co_corretaje_opcion" id="co_corretaje_opcion">
                                 <option value="no" selected>No</option>
                                 <option value="si">Sí</option>
                             </select>
+                        </div>
+                         <div class="form-group" id="co-corretaje-details" style="display: none;">
+                            <label for="co_corretaje_nombre"><i class="fas fa-user-friends"></i> Nombre Co-corredor</label>
+                            <input type="text" name="co_corretaje_nombre" id="co_corretaje_nombre" placeholder="Nombre del co-corredor">
+                            <label for="co_corretaje_porcentaje" style="margin-top: 1rem;"><i class="fas fa-percentage"></i> % Co-corretaje</label>
+                            <input type="number" name="co_corretaje_porcentaje" id="co_corretaje_porcentaje" step="0.01" placeholder="0.00">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="comision_tpp"><i class="fas fa-hand-holding-usd"></i> ComisionTPP</label>
+                            <input type="text" name="ComisionTPP" id="comision_tpp" class="currency" placeholder="0" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label for="uib"><i class="fas fa-building"></i> ComisionUIB</label>
+                            <input type="text" name="uib" id="uib" placeholder="0" class="currency" readonly>
                         </div>
                     </div>
                 </fieldset>
@@ -276,7 +282,7 @@
                                     Seleccionar archivo
                                 </label>
                             </div>
-                            <select name="tipo_archivo[]">
+                            <select name="tipo_archivo[]" onchange="handleTipoArchivoChange(this)">
                                 <option value="Recibo">RECIBO</option>
                                 <option value="Poliza">PÓLIZA</option>
                                 <option value="Clausulado">CLAUSULADO</option>
@@ -356,7 +362,7 @@
                         Seleccionar archivo
                     </label>
                 </div>
-                <select name="tipo_archivo[]">
+                <select name="tipo_archivo[]" onchange="handleTipoArchivoChange(this)">
                     <option value="Recibo">Recibo</option>
                     <option value="Poliza">Póliza</option>
                     <option value="Clausulado">Clausulado</option>
@@ -369,12 +375,6 @@
             `;
             container.appendChild(nuevo);
             
-            // Initialize the new select field's "Otro" input visibility
-            const newSelect = nuevo.querySelector('select[name="tipo_archivo[]"]');
-            if (newSelect) {
-                handleTipoArchivoChange(newSelect); // Assuming handleTipoArchivoChange is defined globally or in scope
-            }
-
             // Añadir efecto de aparición
             nuevo.style.opacity = '0';
             nuevo.style.transform = 'translateY(20px)';
@@ -395,28 +395,13 @@
             }, 300);
         }
 
-        // Formateo dinámico de campos monetarios mejorado
-        function formatCurrency(input) {
+        function formatAsInteger(input) {
             let value = input.value.replace(/[^0-9]/g, '');
-
-            if (!value) {
+            if (value) {
+                input.value = '$' + parseInt(value, 10).toLocaleString('es-CO');
+            } else {
                 input.value = '';
-                return;
             }
-
-            while (value.length < 3) {
-                value = '0' + value;
-            }
-
-            const intPart = value.slice(0, -2);
-            const decimalPart = value.slice(-2);
-            const formatted = '$' + parseInt(intPart).toLocaleString('es-CO') + ',' + decimalPart;
-
-            input.value = formatted;
-
-            setTimeout(() => {
-                input.setSelectionRange(input.value.length, input.value.length);
-            }, 0);
         }
 
         // Actualizar etiquetas de archivos
@@ -465,16 +450,6 @@
                 handleTipoArchivoChange(selectEl);
             });
 
-            // Event delegation for select changes
-            const fileContainer = document.getElementById('file-container');
-            if (fileContainer) {
-                fileContainer.addEventListener('change', function(event) {
-                    if (event.target.matches('select[name="tipo_archivo[]"]')) {
-                        handleTipoArchivoChange(event.target);
-                    }
-                });
-            }
-
             // --- Logic for Policy Number Modification on Renewal ---
             const renovacionCheckbox = document.getElementById('renovacion');
             const policyModificationSection = document.getElementById('policy-modification-section');
@@ -484,11 +459,8 @@
 
             if (renovacionCheckbox) {
                 renovacionCheckbox.addEventListener('change', function() {
-                    if (this.checked) {
-                        policyModificationSection.style.display = 'flex'; // Use flex to align items
-                    } else {
-                        policyModificationSection.style.display = 'none';
-                        // Also hide and reset the inner fields when "Es Renovación" is unchecked
+                    policyModificationSection.style.display = this.checked ? 'flex' : 'none';
+                    if (!this.checked) {
                         policyNumberModifiedCheckbox.checked = false;
                         oldPolicyNumberSection.style.display = 'none';
                         oldPolicyNumberInput.value = '';
@@ -499,12 +471,9 @@
 
             if (policyNumberModifiedCheckbox) {
                 policyNumberModifiedCheckbox.addEventListener('change', function() {
-                    if (this.checked) {
-                        oldPolicyNumberSection.style.display = 'block';
-                        oldPolicyNumberInput.required = true;
-                    } else {
-                        oldPolicyNumberSection.style.display = 'none';
-                        oldPolicyNumberInput.required = false;
+                    oldPolicyNumberSection.style.display = this.checked ? 'block' : 'none';
+                    oldPolicyNumberInput.required = this.checked;
+                    if (!this.checked) {
                         oldPolicyNumberInput.value = '';
                     }
                 });
@@ -513,70 +482,56 @@
             // --- Lógica de Cálculo y Formato de Moneda ---
             const primaNetaInput = document.getElementById('prima_neta');
             const porcComisionInput = document.getElementById('porcentaje_comision_valor');
-            const porcParticipacionVendedorInput = document.getElementById('porcentaje_vendedor');
             const comisionCalculadaInput = document.getElementById('comision_calculada');
+            const coCorretajeSelect = document.getElementById('co_corretaje_opcion');
+            const coCorretajeDetails = document.getElementById('co-corretaje-details');
+            const porcCoCorretajeInput = document.getElementById('co_corretaje_porcentaje');
             const comisionTppInput = document.getElementById('comision_tpp');
-            const participacionUibInput = document.getElementById('uib'); // Ahora es ComisionUIB
+            const participacionUibInput = document.getElementById('uib');
+            const porcParticipacionVendedorInput = document.getElementById('porcentaje_vendedor');
 
             function calcularComisiones() {
-                // 1. Parsear valores
-                const primaNeta = parseFloat(primaNetaInput.value.replace(/\$|\./g, '')) || 0;
-                const porcComision = parseFloat(porcComisionInput.value.replace(',', '.')) || 0;
-                // CORRECCIÓN: Usar .replace(',', '.') para ser consistente
-                const porcParticipacionVendedor = parseFloat(porcParticipacionVendedorInput.value.replace(',', '.')) || 0;
+                const primaNeta = parseFloat(primaNetaInput.value.replace(/\$|\./g, '').replace(',', '.')) || 0;
+                const porcComision = parseFloat(porcComisionInput.value) || 0;
+                const porcParticipacion = parseFloat(porcParticipacionVendedorInput.value) || 0;
 
-                // DEBUG: Loggear valores parseados
-                console.log({
-                    primaNeta,
-                    porcComision,
-                    porcParticipacionVendedor
-                });
+                const comisionTotal = primaNeta * (porcComision / 100);
+                comisionCalculadaInput.value = '$' + Math.round(comisionTotal).toLocaleString('es-CO');
 
-                // 2. Calcular Comision$
-                const comisionCalculada = primaNeta * (porcComision / 100);
-                comisionCalculadaInput.value = '$' + Math.round(comisionCalculada).toLocaleString('es-CO');
-
-                // 3. Lógica condicional
-                // Limpiar campos antes de recalcular
-                comisionTppInput.value = '';
-                participacionUibInput.value = '';
-
-                if (porcParticipacionVendedor >= 100) {
-                    // Caso: Vendedor toma 100% o más (se asume 100%)
-                    participacionUibInput.value = '$' + Math.round(comisionCalculada).toLocaleString('es-CO');
-                } else if (porcParticipacionVendedor > 0) {
-                    // Caso: Vendedor toma entre 0% y 100%
-                    const comisionTpp = comisionCalculada * (porcParticipacionVendedor / 100);
-                    comisionTppInput.value = '$' + Math.round(comisionTpp).toLocaleString('es-CO');
-
-                    const comisionUib = comisionCalculada - comisionTpp;
-                    participacionUibInput.value = '$' + Math.round(comisionUib).toLocaleString('es-CO');
-                } else {
-                    // Caso: Vendedor toma 0% o el campo está vacío/inválido
-                    participacionUibInput.value = '$' + Math.round(comisionCalculada).toLocaleString('es-CO');
+                let comisionTpp = 0;
+                if (coCorretajeSelect.value === 'si') {
+                    // Si hay co-corretaje, TPP es un % de la comisión total
+                    const porcCoCorretaje = parseFloat(porcCoCorretajeInput.value) || 0;
+                    comisionTpp = comisionTotal * (porcCoCorretaje / 100);
+                } else if (porcParticipacion > 0 && porcParticipacion < 100) {
+                    // Si no hay co-corretaje pero sí participación de vendedor
+                    comisionTpp = comisionTotal * (porcParticipacion / 100);
                 }
+
+                comisionTppInput.value = '$' + Math.round(comisionTpp).toLocaleString('es-CO');
+                const comisionUib = comisionTotal - comisionTpp;
+                participacionUibInput.value = '$' + Math.round(comisionUib).toLocaleString('es-CO');
             }
 
-            // Añadir listeners para recalcular
-            [primaNetaInput, porcComisionInput, porcParticipacionVendedorInput].forEach(input => {
+            [primaNetaInput, porcComisionInput, porcCoCorretajeInput, coCorretajeSelect, porcParticipacionVendedorInput].forEach(input => {
                 if(input) input.addEventListener('input', calcularComisiones);
             });
 
+            if (coCorretajeSelect) {
+                coCorretajeSelect.addEventListener('change', function() {
+                    coCorretajeDetails.style.display = this.value === 'si' ? 'block' : 'none';
+                    if (this.value !== 'si') {
+                        porcCoCorretajeInput.value = '';
+                    }
+                    calcularComisiones();
+                });
+            }
+
             // Formatear todos los campos de moneda como enteros
             document.querySelectorAll('input.currency').forEach(input => {
-                const formatAsInteger = () => {
-                    let value = input.value.replace(/[^0-9]/g, '');
-                    if (value) {
-                        input.value = '$' + parseInt(value, 10).toLocaleString('es-CO');
-                    } else {
-                        input.value = '';
-                    }
-                };
-
-                // Solo añadir listeners a los campos que no son de solo lectura
                 if (!input.readOnly) {
-                    input.addEventListener('input', formatAsInteger);
-                    input.addEventListener('blur', formatAsInteger);
+                    input.addEventListener('input', () => formatAsInteger(input));
+                    input.addEventListener('blur', () => formatAsInteger(input));
                 }
             });
 
@@ -589,71 +544,38 @@
             });
 
             // Actualizar progreso en tiempo real
-            const allInputs = document.querySelectorAll('input, select, textarea');
-            allInputs.forEach(input => {
-                input.addEventListener('input', updateProgress);
-                input.addEventListener('change', updateProgress);
-            });
+            document.getElementById('mainForm').addEventListener('input', updateProgress);
 
             // Validación del formulario
             document.getElementById('mainForm').addEventListener('submit', function(e) {
                 e.preventDefault();
-
-                // Validar campos requeridos
-                const requiredFields = this.querySelectorAll('[required]');
-                let allValid = true;
-
-                requiredFields.forEach(field => {
-                    if (!field.value.trim() && field.type !== 'file') {
-                        allValid = false;
-                        field.style.borderColor = 'var(--error-color)';
-                        field.focus();
-                    } else if (field.type === 'file' && field.files.length === 0) {
-                        allValid = false;
-                        field.nextElementSibling.style.borderColor = 'var(--error-color)'; // Marcar el label del file input
-                    } else {
-                        field.style.borderColor = 'var(--border-color)';
-                        if (field.type === 'file') {
-                            field.nextElementSibling.style.borderColor = 'var(--border-color)';
-                        }
-                    }
-                });
-
-                if (!allValid) {
-                    showNotification('Por favor, complete todos los campos requeridos', 'error');
-                    return;
-                }
-
                 const submitBtn = this.querySelector('.btn-submit');
                 const originalText = submitBtn.innerHTML;
 
                 submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
                 submitBtn.disabled = true;
-                submitBtn.classList.add('loading');
                 
-                // Crear un objeto FormData para enviar los datos del formulario, incluyendo archivos
                 const formData = new FormData(this);
 
-                fetch('/registrar', {
+                fetch("{{ url_for('registrar') }}", {
                     method: 'POST',
                     body: formData
                 })
-                .then(response => response.json()) // Asumiendo que Flask devuelve JSON
+                .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        window.location.href = '/resumen/' + data.consecutivo;
+                        window.location.href = `/resumen/${data.consecutivo}`;
                     } else {
-                        showNotification(data.message || 'Error al guardar la remisión', 'error');
+                        showNotification(data.message || 'Error al guardar.', 'error');
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    showNotification('Error de conexión al intentar guardar.', 'error');
+                    showNotification('Error de conexión.', 'error');
                 })
                 .finally(() => {
                     submitBtn.innerHTML = originalText;
                     submitBtn.disabled = false;
-                    submitBtn.classList.remove('loading');
                 });
             });
 
@@ -661,35 +583,21 @@
             const periodicidadSelect = document.getElementById('periodicidad_pago');
             const formaPagoSelect = document.getElementById('forma_pago');
             const cuotasGroup = document.getElementById('numero_cuotas_group');
-            const cuotasInput = document.getElementById('numero_cuotas');
             const tipoMovimientoGroup = document.getElementById('tipo_movimiento_group');
-            const tipoMovimientoInput = document.getElementById('tipo_movimiento');
 
             function toggleCuotasField() {
-                const periodicidad = periodicidadSelect.value;
-                const formaPago = formaPagoSelect.value;
-                const formasPagoValidas = ['Fraccionado', 'Acuerdo de pago', 'Cobro mensual', 'Financiado'];
+                const esMensual = periodicidadSelect.value === 'Mensual';
+                const esContado = formaPagoSelect.value === 'Contado';
+                const show = esMensual && !esContado;
 
-                if (periodicidad === 'Mensual' && formasPagoValidas.includes(formaPago)) {
-                    cuotasGroup.style.display = 'block';
-                    cuotasInput.required = true;
-                    tipoMovimientoGroup.style.display = 'block';
-                    tipoMovimientoInput.required = true;
-                } else {
-                    cuotasGroup.style.display = 'none';
-                    cuotasInput.required = false;
-                    cuotasInput.value = ''; // Limpiar el valor si se oculta
-
-                    tipoMovimientoGroup.style.display = 'none';
-                    tipoMovimientoInput.required = false;
-                }
+                cuotasGroup.style.display = show ? 'block' : 'none';
+                cuotasGroup.querySelector('input').required = show;
+                tipoMovimientoGroup.style.display = show ? 'block' : 'none';
+                tipoMovimientoGroup.querySelector('select').required = show;
             }
 
-            // Listeners para los selects
             if(periodicidadSelect) periodicidadSelect.addEventListener('change', toggleCuotasField);
             if(formaPagoSelect) formaPagoSelect.addEventListener('change', toggleCuotasField);
-
-            // Llamada inicial para establecer el estado correcto al cargar la página
             toggleCuotasField();
 
             // --- Lógica para Categorías / Grupo ---
@@ -700,87 +608,44 @@
 
             if (categoriasSelect) {
                 categoriasSelect.addEventListener('change', function() {
-                    const selectedValue = this.value;
-
-                    // Manejar la visibilidad del campo "Otro"
-                    if (selectedValue === 'Otro') {
-                        otroGrupoInput.style.display = 'block';
-                        otroGrupoInput.required = true;
-                    } else {
-                        otroGrupoInput.style.display = 'none';
-                        otroGrupoInput.required = false;
-                    }
-
-                    // Manejar el modal de Cartagena
-                    if (selectedValue === 'Grupo Cartagena') {
+                    otroGrupoInput.style.display = this.value === 'Otro' ? 'block' : 'none';
+                    otroGrupoInput.required = this.value === 'Otro';
+                    if (this.value === 'Grupo Cartagena') {
                         cartagenaModal.style.display = 'flex';
                     }
                 });
             }
 
             if (modalAceptarBtn) {
-                modalAceptarBtn.addEventListener('click', function() {
-                    cartagenaModal.style.display = 'none';
-                });
+                modalAceptarBtn.addEventListener('click', () => cartagenaModal.style.display = 'none');
             }
-
-            // Cerrar modal si se hace clic fuera de él (en el overlay)
             if (cartagenaModal) {
-                cartagenaModal.addEventListener('click', function(event) {
-                    if (event.target === cartagenaModal) {
-                        cartagenaModal.style.display = 'none';
-                    }
+                cartagenaModal.addEventListener('click', (e) => {
+                    if (e.target === cartagenaModal) cartagenaModal.style.display = 'none';
                 });
             }
 
-            // Inicializar progreso
+            // --- Lógica para autocompletar comisión de vendedor ---
+            const vendedorSelect = document.getElementById('vendedor');
+            const porcParticipacionVendedorInput = document.getElementById('porcentaje_vendedor');
+
+            if (vendedorSelect && porcParticipacionVendedorInput) {
+                vendedorSelect.addEventListener('change', function() {
+                    const selectedOption = this.options[this.selectedIndex];
+                    const comision = selectedOption.dataset.comision;
+
+                    porcParticipacionVendedorInput.value = comision || '';
+                    porcParticipacionVendedorInput.dispatchEvent(new Event('input'));
+                });
+            }
+
+            // Inicializar
             updateProgress();
-        });
 
-        // Función para validar formato de NIT/CC
-        function validateNIT(input) {
-            const value = input.value.replace(/[^0-9]/g, '');
-            if (value.length > 0) {
-                input.value = value;
-            }
-        }
-
-        // Función para validar porcentajes
-        function validatePercentage(input) {
-            let value = parseFloat(input.value.replace('$', '').replace(/\./g, '').replace(',', '.'));
-            if (isNaN(value)) value = 0;
-            if (value > 100) value = 100;
-            if (value < 0) value = 0;
-            // Formatear a dos decimales, pero solo si es necesario o si el usuario ya puso decimales
-            if (input.value.includes(',') || input.value.includes('.')) {
-                 input.value = value.toFixed(2).replace('.',','); // Usar coma para decimales si es la preferencia
-            } else {
-                 input.value = Math.round(value); // Si no hay decimales, mostrar como entero
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            const nitInput = document.getElementById('nit');
-            if (nitInput) {
-                nitInput.addEventListener('input', () => validateNIT(nitInput));
-            }
-
-            const percentageInputs = document.querySelectorAll('input[name*="porcentaje"], input[name="comision"], input[name="uib"], input[name="correcol"], input[name="corredor2"]');
-            percentageInputs.forEach(input => {
-                input.addEventListener('blur', () => validatePercentage(input));
-                input.addEventListener('input', (event) => {
-                    // Permitir solo números y un punto/coma decimal
-                    event.target.value = event.target.value.replace(/[^0-9.,]/g, '');
-                });
-                input.setAttribute('max', '100');
-                input.setAttribute('min', '0');
-                input.setAttribute('step', '0.01'); // Permitir decimales
-            });
-
+            // Set default date for fecha_recepcion
             const fechaRecepcion = document.getElementById('fecha_recepcion');
             if (fechaRecepcion && !fechaRecepcion.value) {
-                const today = new Date().toISOString().split('T')[0];
-                fechaRecepcion.value = today;
+                fechaRecepcion.value = new Date().toISOString().split('T')[0];
             }
         });
     </script>
