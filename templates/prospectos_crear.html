@@ -115,8 +115,8 @@
                                 <label for="nombre_tpp">Nombre TPP</label>
                                 <select id="nombre_tpp" name="Nombre_TPP">
                                     <option value="">Seleccione Vendedor...</option>
-                                    {% for vendedor in opciones_vendedor %}
-                                    <option value="{{ vendedor.nombre }}" data-comision="{{ vendedor.comision }}">{{ vendedor.nombre }}</option>
+                                    {% for opt in opciones_vendedor %}
+                                    <option value="{{ opt }}">{{ opt }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
@@ -165,7 +165,6 @@
         const comisionValorInput = document.getElementById('comision_valor');
         const esTppSelect = document.getElementById('es_tpp');
         const tppDetails = document.getElementById('tpp-details');
-        const nombreTppSelect = document.getElementById('nombre_tpp');
         const porcentajeTppInput = document.getElementById('porcentaje_comision_tpp');
         const valorTppInput = document.getElementById('valor_comision_tpp');
 
@@ -208,22 +207,8 @@
         comisionPorcentajeInput.addEventListener('input', calcularComision);
         esTppSelect.addEventListener('change', function() {
             tppDetails.style.display = this.value === 'si' ? 'block' : 'none';
-            if (this.value !== 'si') {
-                // Si se deselecciona TPP, limpiar campos relacionados
-                nombreTppSelect.value = '';
-                porcentajeTppInput.value = '';
-            }
             calcularComision();
         });
-
-        nombreTppSelect.addEventListener('change', function() {
-            const selectedOption = this.options[this.selectedIndex];
-            const comision = selectedOption.dataset.comision;
-            porcentajeTppInput.value = comision || '';
-            // Disparar evento 'input' para que se recalcule si hay otras dependencias
-            porcentajeTppInput.dispatchEvent(new Event('input'));
-        });
-
         porcentajeTppInput.addEventListener('input', calcularComision);
         
         const form = document.getElementById('prospecto-form');

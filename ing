@@ -1,0 +1,36 @@
+[33ma5ba75b[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfeature/manage-dropdown-lists[m[33m)[m Restaura versión anterior de formulario.html desde ddac286
+M	templates/formulario.html
+[33m4557b02[m Restaura versión anterior de formulario.html
+M	templates/formulario.html
+[33m54d1678[m Restaura versión anterior de app.py
+M	app.py
+[33m89830f0[m Restaura versión anterior de index.html
+M	templates/index.html
+[33m19603e6[m Restaura admin, config y estilos eliminados tras merge
+A	admin/__init__.py
+A	admin/routes.py
+A	admin/templates/admin/dashboard.html
+A	admin/templates/admin/editar_lista_simple.html
+A	admin/templates/admin/editar_vendedores.html
+A	admin/templates/admin/layout.html
+A	admin/templates/admin/listas.html
+A	admin/templates/admin/login.html
+A	config/analistas.json
+A	config/aseguradoras.json
+A	config/estado_prospecto.json
+A	config/estado_vencimientos.json
+A	config/forma_pago.json
+A	config/periodicidad_pago.json
+A	config/ramos.json
+A	config/responsable_comercial.json
+A	config/responsable_tecnico.json
+A	config/responsable_vencimientos.json
+A	config/tipo_moneda.json
+A	config/vendedores.json
+A	config_manager.py
+A	static/admin_styles.css
+[33m10815fb[m[33m ([m[1;31morigin/feature/unified-folder-creation[m[33m, [m[1;32mjules-folder[m[33m)[m feat: Unify client and vendor folder creation
+M	app.py
+A	templates/crear_carpeta.html
+D	templates/crear_carpeta_cliente.html
+M	templates/index.html
