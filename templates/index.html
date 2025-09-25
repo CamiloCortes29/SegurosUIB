@@ -66,11 +66,15 @@
             </a>
             <a href="{{ url_for('mostrar_formulario_crear_carpeta') }}" class="nav-button btn-crear-carpeta">
                 <i class="fas fa-folder-plus fa-2x"></i>
-                <span>Crear Carpeta</span>
+                <span>Crear Carpeta Cliente</span>
             </a>
              <a href="{{ url_for('mostrar_formulario_carga_maestra') }}" class="nav-button nav-button-maestro">
                 <i class="fas fa-upload fa-2x"></i>
                 <span>Carga Maestra</span>
+            </a>
+            <a href="{{ url_for('admin.dashboard') }}" class="nav-button btn-admin">
+                <i class="fas fa-cogs fa-2x"></i>
+                <span>Configuración</span>
             </a>
         </nav>
 
