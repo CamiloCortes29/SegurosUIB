@@ -205,6 +205,9 @@ app.config['VENCIMIENTOS_PROCESADA_FILE_PATH'] = os.path.join(VENCIMIENTOS_DATA_
 app.config['PROSPECTOS_DATA_DIR'] = PROSPECTOS_DATA_DIR
 app.config['PROSPECTOS_FILE_PATH'] = os.path.join(PROSPECTOS_DATA_DIR, PROSPECTOS_FILENAME)
 
+# Registrar el Blueprint de administración
+app.register_blueprint(admin_bp)
+
 # Obtener el consecutivo
 def obtener_consecutivo():
     if not os.path.exists(CONSECUTIVO_FILE):
