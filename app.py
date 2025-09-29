@@ -230,68 +230,105 @@ def obtener_consecutivo():
 
     return consecutivo_actual
 
+import dataverse_client
+
 def guardar_remision(datos):
-    df = pd.DataFrame([datos])
+    """
+    Guarda una remisión en Dataverse.
+    Realiza la conversión de tipos de datos necesarios antes de enviar.
+    """
     try:
-        if os.path.exists(EXCEL_FILE):
-            df_existente = pd.read_excel(EXCEL_FILE)
-            df_final = pd.concat([df_existente, df], ignore_index=True)
-        else:
-            df_final = df
+        dataverse_config = config_manager.get_config('dataverse')
+        remisiones_table_name = dataverse_config.get('tables', {}).get('remisiones')
+        if not remisiones_table_name:
+            raise Exception("El nombre de la tabla de remisiones ('remisiones') no está configurado en config.json")
 
-        # ORDEN_COLUMNAS_EXCEL_REMISIONES should be the global list defined in a previous step.
-        # Ensure all columns from the master order list exist in df_final.
-        # Initialize missing columns with an empty string, assuming most are text or can be empty text.
-        # More specific default values (like 0 for numbers, False for booleans) might be needed
-        # if strict data types are required right at this stage for Excel, but usually empty strings are fine for Excel.
-        if 'ORDEN_COLUMNAS_EXCEL_REMISIONES' in globals() and isinstance(ORDEN_COLUMNAS_EXCEL_REMISIONES, list):
-            current_columns = df_final.columns.tolist()
-            for col_maestra in ORDEN_COLUMNAS_EXCEL_REMISIONES:
-                if col_maestra not in current_columns:
-                    df_final[col_maestra] = ""  # Add missing column with empty strings
+        payload = datos.copy()
 
-            # Reorder df_final according to the master list
-            # Select only columns that are in ORDEN_COLUMNAS_EXCEL_REMISIONES to avoid KeyErrors if df_final has extra columns
-            # And also ensure that all columns from ORDEN_COLUMNAS_EXCEL_REMISIONES are present (handled by loop above)
-            df_final = df_final[ORDEN_COLUMNAS_EXCEL_REMISIONES]
-        else:
-            print("ADVERTENCIA: ORDEN_COLUMNAS_EXCEL_REMISIONES no está definida o no es una lista. remisiones.xlsx se guardará con el orden actual del DataFrame.")
+        # --- Conversión de Tipos de Datos para Dataverse ---
+        # Booleanos: Dataverse espera True/False
+        for field in ['renovacion', 'negocio_nuevo', 'renovable', 'modificacion', 'anexo_checkbox', 'policy_number_modified']:
+            payload[field] = (payload.get(field, '').lower() == 'si')
 
-        df_final.to_excel(EXCEL_FILE, index=False)
-        return True
+        # Fechas: Dataverse espera 'YYYY-MM-DD'. El formulario ya las envía en este formato.
+        # Nos aseguramos de que las fechas vacías se envíen como null.
+        for field in ['fecha_recepcion', 'fecha_inicio', 'fecha_fin', 'fecha_limite_pago']:
+            if not payload.get(field):
+                payload[field] = None
+
+        # Numéricos: La limpieza ya se hace en la ruta /registrar, pero aquí nos aseguramos
+        # de que los valores que no son números válidos se envíen como null a Dataverse.
+        numeric_fields = [
+            'prima_neta', 'porcentaje_comision_valor', 'Comision$', 'porcentaje_vendedor',
+            'co_corretaje_porcentaje', 'ComisionTPP', 'ComisionUIB', 'uib',
+            'gastos_adicionales', 'numero_cuotas'
+        ]
+        for field in numeric_fields:
+            if field in payload:
+                try:
+                    # Convertir a float o int según corresponda
+                    if '.' in str(payload[field]):
+                        payload[field] = float(payload[field])
+                    else:
+                        payload[field] = int(payload[field])
+                except (ValueError, TypeError):
+                    payload[field] = None # Enviar null si no es un número válido
+
+        # Llama al cliente de Dataverse para crear el registro
+        created_record = dataverse_client.create_record(remisiones_table_name, payload)
+        return created_record
+
     except Exception as e:
-        print(f"Error al guardar en Excel: {e}")
-        return False
+        print(f"Error al guardar remisión en Dataverse: {e}")
+        # Propagar la excepción para que la ruta la capture y muestre un mensaje de error
+        raise e
+
 
 def guardar_cobros(nuevos_cobros):
-    df = pd.DataFrame(nuevos_cobros)
+    """
+    Guarda una lista de nuevos registros de cobro en Dataverse.
+    """
     try:
-        if os.path.exists(COBROS_FILE):
-            df_existente = pd.read_excel(COBROS_FILE)
-            df_final = pd.concat([df_existente, df], ignore_index=True)
-        else:
-            df_final = df
+        dataverse_config = config_manager.get_config('dataverse')
+        cobros_table_name = dataverse_config.get('tables', {}).get('cobros')
+        if not cobros_table_name:
+            raise Exception("El nombre de la tabla de cobros no está configurado.")
 
-        # Ensure all columns exist and are in order
-        for col in ORDEN_COLUMNAS_COBROS:
-            if col not in df_final.columns:
-                df_final[col] = ""
-        df_final = df_final[ORDEN_COLUMNAS_COBROS]
+        # Itera sobre cada registro de cobro y lo crea en Dataverse
+        for cobro_data in nuevos_cobros:
+            # Aquí se pueden añadir conversiones de tipo si fueran necesarias
+            # Por ejemplo, asegurar que las fechas están en el formato correcto.
+            if 'Fecha_Vencimiento_Cuota' in cobro_data and isinstance(cobro_data['Fecha_Vencimiento_Cuota'], datetime):
+                 cobro_data['Fecha_Vencimiento_Cuota'] = cobro_data['Fecha_Vencimiento_Cuota'].strftime('%Y-%m-%d')
 
-        df_final.to_excel(COBROS_FILE, index=False)
+            dataverse_client.create_record(cobros_table_name, cobro_data)
         return True
     except Exception as e:
-        print(f"Error al guardar en {COBROS_FILENAME}: {e}")
+        print(f"Error al guardar cobros en Dataverse: {e}")
+        # En un escenario real, se podría implementar un rollback o manejo de transacciones
         return False
 
-def cargar_remisiones():
-    if os.path.exists(EXCEL_FILE):
-        try:
-            return pd.read_excel(EXCEL_FILE).to_dict(orient='records')
-        except Exception as e:
-            print(f"Error al cargar desde Excel: {e}")
-            return []
-    return []
+def cargar_remisiones(filter_query=None, top=None, order_by=None, select_columns=None):
+    """
+    Carga remisiones desde Dataverse con opciones de filtrado y orden.
+    """
+    try:
+        dataverse_config = config_manager.get_config('dataverse')
+        remisiones_table_name = dataverse_config.get('tables', {}).get('remisiones')
+        if not remisiones_table_name:
+            raise Exception("El nombre de la tabla de remisiones ('remisiones') no está configurado en config.json")
+
+        records = dataverse_client.get_records(
+            remisiones_table_name,
+            select_columns=select_columns,
+            filter_query=filter_query,
+            top=top,
+            order_by=order_by
+        )
+        return records
+    except Exception as e:
+        print(f"Error al cargar remisiones desde Dataverse: {e}")
+        return []
 
 @app.route('/', methods=['GET'])
 def index():
@@ -390,10 +427,10 @@ def registrar():
         # Add automatic and placeholder fields
         datos['consecutivo'] = obtener_consecutivo()
         datos['estado'] = 'Pendiente'
-        datos['fecha_registro'] = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        datos['fecha_registro'] = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ") # Formato ISO 8601 para Dataverse
         datos['numero_remision_manual'] = '' # Initialize placeholder
 
-        # --- 4. File Processing Logic ---
+        # --- 4. File Processing Logic (remains unchanged) ---
         nombre_cliente_form = datos.get('tomador', 'SIN_TOMADOR').strip()
         nit_cliente_form = datos.get('nit', 'SIN_NIT').strip()
         nombre_carpeta_cliente_base = f"{nombre_cliente_form}_{nit_cliente_form}"
@@ -430,7 +467,6 @@ def registrar():
 
                 ramo_form = datos.get('ramo', 'SIN_RAMO').replace(' ','_')
 
-                # --- New, robust logic for vigencia_form to be YYYY-YYYY ---
                 year_inicio = get_year_from_date(datos.get('fecha_inicio'))
                 year_fin = get_year_from_date(datos.get('fecha_fin'))
 
@@ -446,55 +482,48 @@ def registrar():
                     ruta_destino_final = os.path.join(ruta_base_cliente, 'DOCUMENTOS')
 
                 os.makedirs(ruta_destino_final, exist_ok=True)
-
                 nombre_base_archivo = f"{ramo_form}_{datos.get('poliza', 'SINPOLIZA')}_{datos.get('aseguradora', 'SINASEGURADORA')}_{tipo_para_usar_en_nombre}".replace(' ', '_')
                 filename = secure_filename(nombre_base_archivo + extension)
-                # Truncation logic can be added here if needed
-
                 ruta_archivo_con_nombre = os.path.join(ruta_destino_final, filename)
                 archivo.save(ruta_archivo_con_nombre)
                 nombres_archivos_guardados.append(os.path.relpath(ruta_archivo_con_nombre, app.config['CLIENT_FOLDERS_BASE_DIR']))
 
         datos['archivos'] = ", ".join(nombres_archivos_guardados)
 
-        if guardar_remision(datos):
-            # --- Lógica para generar cuotas de cobro ---
-            if datos.get('periodicidad_pago') == 'Mensual' and datos.get('forma_pago') != 'Contado':
-                try:
-                    num_cuotas = int(datos.get('numero_cuotas', 0))
-                    if num_cuotas > 0:
-                        nuevos_cobros = []
-                        # Use YYYY-MM-DD format for parsing, which is what HTML date inputs provide
-                        fecha_inicio_dt = datetime.strptime(datos.get('fecha_inicio'), '%Y-%m-%d')
+        # --- 5. Save to Dataverse ---
+        try:
+            created_record = guardar_remision(datos)
+            if created_record:
+                # La lógica de cobros se mantiene por ahora con Excel, pero podría migrarse después.
+                if datos.get('periodicidad_pago') == 'Mensual' and datos.get('forma_pago') != 'Contado':
+                    try:
+                        num_cuotas = int(datos.get('numero_cuotas', 0))
+                        if num_cuotas > 0:
+                            nuevos_cobros = []
+                            fecha_inicio_dt = datetime.strptime(datos.get('fecha_inicio'), '%Y-%m-%d')
+                            for i in range(num_cuotas):
+                                fecha_vencimiento = fecha_inicio_dt + relativedelta(months=i)
+                                cobro = {
+                                    'ID_COBRO': uuid.uuid4().hex[:10].upper(),
+                                    'CONSECUTIVO_REMISION': datos.get('consecutivo'),
+                                    'Tomador': datos.get('tomador'), 'NIT_CC': datos.get('nit'),
+                                    'Aseguradora': datos.get('aseguradora'), 'Ramo': datos.get('ramo'),
+                                    'N_Poliza': datos.get('poliza'), 'N_Cuota': i + 1, 'Total_Cuotas': num_cuotas,
+                                    'Fecha_Vencimiento_Cuota': fecha_vencimiento.strftime('%Y-%m-%d'),
+                                    'Fecha_Inicio_Vigencia': datos.get('fecha_inicio'), 'Fecha_Fin_Vigencia': datos.get('fecha_fin'),
+                                    'Estado': 'Pendiente', 'Tipo_Movimiento': datos_formulario.get('tipo_movimiento', 'Cobro mensual')
+                                }
+                                nuevos_cobros.append(cobro)
+                            guardar_cobros(nuevos_cobros)
+                    except (ValueError, TypeError) as e:
+                        print(f"Error al procesar cuotas de cobro para {datos.get('consecutivo')}: {e}")
 
-                        for i in range(num_cuotas):
-                            fecha_vencimiento = fecha_inicio_dt + relativedelta(months=i)
-
-                            cobro = {
-                                'ID_COBRO': uuid.uuid4().hex[:10].upper(),
-                                'CONSECUTIVO_REMISION': datos.get('consecutivo'),
-                                'Tomador': datos.get('tomador'),
-                                'NIT_CC': datos.get('nit'),
-                                'Aseguradora': datos.get('aseguradora'),
-                                'Ramo': datos.get('ramo'),
-                                'N_Poliza': datos.get('poliza'),
-                                'N_Cuota': i + 1,
-                                'Total_Cuotas': num_cuotas,
-                                'Fecha_Vencimiento_Cuota': fecha_vencimiento.strftime('%Y-%m-%d'),
-                                'Fecha_Inicio_Vigencia': datos.get('fecha_inicio'),
-                                'Fecha_Fin_Vigencia': datos.get('fecha_fin'),
-                                'Estado': 'Pendiente',
-                                'Tipo_Movimiento': datos_formulario.get('tipo_movimiento', 'Cobro mensual')
-                            }
-                            nuevos_cobros.append(cobro)
-
-                        guardar_cobros(nuevos_cobros)
-                except (ValueError, TypeError) as e:
-                    print(f"Error al procesar cuotas de cobro para {datos.get('consecutivo')}: {e}")
-
-            return jsonify({'success': True, 'message': 'Remisión guardada exitosamente', 'consecutivo': datos.get('consecutivo')})
-        else:
-            return jsonify({'success': False, 'message': 'Error al guardar la remisión en Excel.'}), 500
+                return jsonify({'success': True, 'message': 'Remisión guardada exitosamente en Dataverse', 'consecutivo': datos.get('consecutivo')})
+            else:
+                # Este caso es poco probable si guardar_remision levanta una excepción en caso de fallo.
+                return jsonify({'success': False, 'message': 'Error desconocido al guardar la remisión en Dataverse.'}), 500
+        except Exception as e:
+            return jsonify({'success': False, 'message': f'Error al guardar la remisión en Dataverse: {str(e)}'}), 500
 
     except Exception as e:
         print(f"Error en /registrar: {type(e).__name__} - {e}")
@@ -504,26 +533,18 @@ def registrar():
 
 @app.route('/control')
 def control():
-    remisiones_data = cargar_remisiones()
-    remisiones_ordenadas = sorted(remisiones_data, key=lambda r: str(r.get('consecutivo', '')), reverse=True)
-    primeras_10_remisiones = remisiones_ordenadas[:10]
+    # Carga las 10 remisiones más recientes desde Dataverse, ordenadas por consecutivo
+    remisiones_data = cargar_remisiones(top=10, order_by="consecutivo desc")
 
-    # Lista actualizada para incluir todos los campos relevantes, especialmente los financieros.
-    # Esto asegura que la plantilla 'control.html' reciba todos los datos necesarios.
     campos_esperados = [
         'consecutivo', 'fecha_recepcion', 'tomador', 'nit',
         'aseguradora', 'ramo', 'poliza',
         'fecha_inicio', 'fecha_fin', 'estado', 'numero_remision_manual',
-        'archivos',
-        # Campos financieros clave que ahora se calculan y guardan
-        'prima_neta',
-        'Comision$',
-        'ComisionTPP',
-        'ComisionUIB',
-        'uib' # uib es el alias de ComisionUIB, pero lo incluimos por si se usa directamente
+        'archivos', 'prima_neta', 'Comision$', 'ComisionTPP', 'ComisionUIB', 'uib'
     ]
     remisiones_list = []
-    for r in primeras_10_remisiones:
+    for r in remisiones_data:
+        # Asegura que todos los campos esperados existan en el diccionario para la plantilla
         for campo in campos_esperados:
             if campo not in r:
                 r[campo] = 'N/A'
@@ -533,19 +554,33 @@ def control():
 @app.route('/marcar_creado', methods=['POST'])
 def marcar_creado():
     consecutivo_a_marcar = request.form.get('consecutivo')
-    remisiones_actuales = cargar_remisiones()
-    actualizado = False
-    for remision in remisiones_actuales:
-        if remision['consecutivo'] == consecutivo_a_marcar:
-            remision['estado'] = 'Creado'
-            actualizado = True
-            break
-    if actualizado:
-        df = pd.DataFrame(remisiones_actuales)
-        try:
-            df.to_excel(EXCEL_FILE, index=False)
-        except Exception as e:
-            print(f"Error al guardar Excel después de marcar como creado: {e}")
+    try:
+        dataverse_config = config_manager.get_config('dataverse')
+        remisiones_table_name = dataverse_config.get('tables', {}).get('remisiones')
+        if not remisiones_table_name:
+            raise Exception("Tabla de remisiones no configurada")
+
+        # 1. Buscar el registro por su consecutivo
+        remisiones = cargar_remisiones(filter_query=f"consecutivo eq '{consecutivo_a_marcar}'", top=1)
+        if not remisiones:
+            flash(f"No se encontró la remisión con consecutivo {consecutivo_a_marcar}", "warning")
+            return redirect(url_for('control'))
+
+        remision_a_actualizar = remisiones[0]
+        # Dataverse devuelve un campo de ID único por tabla, usualmente 'nombredelatablaid'
+        pk_field = next((key for key in remision_a_actualizar if key.endswith("id")), None)
+        if not pk_field:
+             raise Exception("No se pudo determinar la clave primaria del registro de remisión.")
+        record_id = remision_a_actualizar[pk_field]
+
+        # 2. Actualizar el estado del registro
+        update_payload = {"estado": "Creado"}
+        dataverse_client.update_record(remisiones_table_name, record_id, update_payload)
+        flash(f"Remisión {consecutivo_a_marcar} marcada como 'Creada'.", "success")
+
+    except Exception as e:
+        flash(f"Error al marcar como creado: {e}", "danger")
+
     return redirect(url_for('control'))
 
 @app.route('/plantilla', methods=['POST'])
@@ -555,151 +590,91 @@ def plantilla():
 
 @app.route('/resumen/<string:consecutivo_id>')
 def mostrar_resumen(consecutivo_id):
-    remisiones = cargar_remisiones()
-    remision_encontrada = None
-    for r in remisiones:
-        if str(r.get('consecutivo')) == str(consecutivo_id):
-            remision_encontrada = r
-            break
-    if remision_encontrada:
-        return render_template('resumen.html', datos=remision_encontrada)
+    # Carga la remisión específica desde Dataverse usando un filtro
+    remisiones = cargar_remisiones(filter_query=f"consecutivo eq '{consecutivo_id}'", top=1)
+    if remisiones:
+        return render_template('resumen.html', datos=remisiones[0])
     else:
         return f"Error: Remisión con consecutivo {consecutivo_id} no encontrada. Verifique el número o contacte soporte.", 404
 
 @app.route('/editar_remision_numero/<string:consecutivo_id>', methods=['GET'])
 def editar_remision(consecutivo_id):
-    remisiones = cargar_remisiones()
-    remision_a_editar = None
-    for r in remisiones:
-        if str(r.get('consecutivo')).strip() == str(consecutivo_id).strip():
-            remision_a_editar = r
-            break
+    remisiones = cargar_remisiones(filter_query=f"consecutivo eq '{consecutivo_id.strip()}'", top=1)
 
-    if remision_a_editar:
-        # Ensure all expected fields are present in the dictionary passed to the template
-        # This prevents errors if the record in Excel is old and missing new columns.
-        campos_completos = ORDEN_COLUMNAS_EXCEL_REMISIONES
-        for campo in campos_completos:
+    if remisiones:
+        remision_a_editar = remisiones[0]
+        # Asegura que todos los campos del formulario existan en el diccionario
+        for campo in ORDEN_COLUMNAS_EXCEL_REMISIONES:
             if campo not in remision_a_editar:
-                remision_a_editar[campo] = '' # Default to empty string if missing
-
+                remision_a_editar[campo] = ''
         return render_template('editar_remision.html', datos=remision_a_editar)
     else:
-        return f"Error: Remisión con consecutivo {consecutivo_id} no encontrada. Verifique el número o contacte soporte.", 404
+        return f"Error: Remisión con consecutivo {consecutivo_id} no encontrada.", 404
 
 @app.route('/guardar_numero_remision', methods=['POST'])
 def guardar_numero_remision():
     consecutivo_a_actualizar = request.form.get('consecutivo')
     nuevo_numero_remision = request.form.get('numero_remision_manual', '').strip()
     if not consecutivo_a_actualizar:
-        return "Error: Consecutivo no proporcionado para la actualización.", 400
-    remisiones = cargar_remisiones()
-    remisiones_actualizadas_df_list = []
-    actualizacion_realizada = False
-    for remision_data in remisiones:
-        if str(remision_data.get('consecutivo')).strip() == str(consecutivo_a_actualizar).strip():
-            remision_data['numero_remision_manual'] = nuevo_numero_remision
-            actualizacion_realizada = True
-        remisiones_actualizadas_df_list.append(remision_data)
-    if actualizacion_realizada:
-        df = pd.DataFrame(remisiones_actualizadas_df_list)
-        try:
-            if 'ORDEN_COLUMNAS_EXCEL_REMISIONES' in globals() and isinstance(ORDEN_COLUMNAS_EXCEL_REMISIONES, list):
-                current_cols_rem = df.columns.tolist()
-                for col_rem_maestra in ORDEN_COLUMNAS_EXCEL_REMISIONES:
-                    if col_rem_maestra not in current_cols_rem:
-                        # Initialize missing columns. Most remisiones fields are strings or can be empty strings.
-                        # Specific numeric fields might need 0, but for general remisiones data, "" is safer if unsure.
-                        df[col_rem_maestra] = ""
-                # Enforce the exact order, dropping any columns not in the master list (though not expected here)
-                df = df.reindex(columns=ORDEN_COLUMNAS_EXCEL_REMISIONES).fillna('')
-            else:
-                print("ADVERTENCIA en guardar_numero_remision: ORDEN_COLUMNAS_EXCEL_REMISIONES no definida. Remisiones se guardará con orden actual.")
+        flash("Error: Consecutivo no proporcionado.", "danger")
+        return redirect(url_for('control'))
 
-            df.to_excel(EXCEL_FILE, index=False)
-            # flash(f'Número de remisión para {consecutivo_a_actualizar} guardado.', 'success') # Example original flash
-        except Exception as e:
-            print(f"Error al guardar Excel en /guardar_numero_remision: {e}")
-            return f"Error crítico al intentar guardar los cambios en el archivo Excel: {e}. Por favor, contacte soporte.", 500
+    try:
+        dataverse_config = config_manager.get_config('dataverse')
+        remisiones_table_name = dataverse_config.get('tables', {}).get('remisiones')
+        if not remisiones_table_name:
+            raise Exception("Tabla de remisiones no configurada")
 
-        # --- Inicia lógica para actualizar vencimientos asociados ---
-        # 'actualizacion_realizada' should be True if the above save was successful.
-        # 'nuevo_numero_remision' is from request.form
-        # 'numero_poliza_de_remision' should have been extracted from df for the updated row.
-        # 'consecutivo_a_actualizar' is also available.
+        # 1. Buscar el registro en Dataverse
+        remisiones = cargar_remisiones(filter_query=f"consecutivo eq '{consecutivo_a_actualizar}'", top=1)
+        if not remisiones:
+            flash(f"No se encontró la remisión {consecutivo_a_actualizar}", 'warning')
+            return redirect(url_for('control'))
 
-        if actualizacion_realizada and nuevo_numero_remision.strip() : # Only proceed if a non-empty numero_remision_manual was set
-            numero_poliza_a_buscar = None
-            remision_actualizada_data = df[df['consecutivo'] == consecutivo_a_actualizar].iloc[0]
+        remision_actualizada_data = remisiones[0]
+        pk_field = next((key for key in remision_actualizada_data if key.endswith("id")), None)
+        if not pk_field:
+            raise Exception("No se pudo determinar la clave primaria para la actualización.")
+        record_id = remision_actualizada_data[pk_field]
 
-            # Check if the policy number was modified and use the old one if available
-            policy_modified_flag = remision_actualizada_data.get('policy_number_modified')
+        # 2. Actualizar el número de remisión manual en Dataverse
+        update_payload = {'numero_remision_manual': nuevo_numero_remision}
+        dataverse_client.update_record(remisiones_table_name, record_id, update_payload)
+        flash(f'Número de remisión para {consecutivo_a_actualizar} guardado en Dataverse.', 'success')
+
+        # --- 3. Lógica para actualizar Vencimientos (se mantiene igual por ahora) ---
+        if nuevo_numero_remision:
+            policy_modified_flag = remision_actualizada_data.get('policy_number_modified', False)
             old_policy_number = remision_actualizada_data.get('old_policy_number')
+            numero_poliza_a_buscar = str(old_policy_number).strip() if policy_modified_flag and old_policy_number else str(remision_actualizada_data.get('poliza', '')).strip()
 
-            if policy_modified_flag == 'si' and pd.notna(old_policy_number) and str(old_policy_number).strip():
-                # Convert to int to remove decimals, then to string for matching.
-                try:
-                    numero_poliza_a_buscar = str(int(float(old_policy_number))).strip()
-                except (ValueError, TypeError):
-                    # Fallback if conversion fails for some reason
-                    numero_poliza_a_buscar = str(old_policy_number).strip()
-            else:
-                numero_poliza_a_buscar = str(remision_actualizada_data.get('poliza', '')).strip()
-
-            if numero_poliza_a_buscar and numero_poliza_a_buscar not in ['N/A', 'None', '', 'nan', 'NaN']:
+            if numero_poliza_a_buscar:
                 ruta_vencimientos = app.config.get('VENCIMIENTOS_PROCESADA_FILE_PATH')
                 if ruta_vencimientos and os.path.exists(ruta_vencimientos):
                     try:
                         df_vencimientos = pd.read_excel(ruta_vencimientos)
                         vencimientos_modificados_count = 0
-
                         if 'NÚMERO PÓLIZA' in df_vencimientos.columns:
-                            # Ensure consistent string comparison
                             df_vencimientos['NÚMERO PÓLIZA_str_comp'] = df_vencimientos['NÚMERO PÓLIZA'].astype(str).str.strip().fillna('')
-
-                            filas_afectadas_mask = df_vencimientos['NÚMERO PÓLIZA_str_comp'] == numero_poliza_a_buscar
-
-                            if filas_afectadas_mask.any():
-                                if 'Estado' not in df_vencimientos.columns: df_vencimientos['Estado'] = ''
-                                if 'Remision_Asociada' not in df_vencimientos.columns: df_vencimientos['Remision_Asociada'] = ''
-                                if 'Observaciones_adicionales' not in df_vencimientos.columns: df_vencimientos['Observaciones_adicionales'] = ''
-
-                                df_vencimientos.loc[filas_afectadas_mask, 'Estado'] = "Renovado"
-                                df_vencimientos.loc[filas_afectadas_mask, 'Remision_Asociada'] = nuevo_numero_remision
-                                df_vencimientos.loc[filas_afectadas_mask, 'Observaciones_adicionales'] = f"Remisión: {nuevo_numero_remision}"
-                                vencimientos_modificados_count = filas_afectadas_mask.sum()
-
-                            if 'NÚMERO PÓLIZA_str_comp' in df_vencimientos.columns: # Drop helper column
-                                df_vencimientos = df_vencimientos.drop(columns=['NÚMERO PÓLIZA_str_comp'])
-                        else:
-                            print(f"Advertencia: Columna 'NÚMERO PÓLIZA' no encontrada en {ruta_vencimientos} al intentar actualizar vencimientos.")
+                            mask = df_vencimientos['NÚMERO PÓLIZA_str_comp'] == numero_poliza_a_buscar
+                            if mask.any():
+                                for col in ['Estado', 'Remision_Asociada', 'Observaciones_adicionales']:
+                                    if col not in df_vencimientos.columns: df_vencimientos[col] = ''
+                                df_vencimientos.loc[mask, 'Estado'] = "Renovado"
+                                df_vencimientos.loc[mask, 'Remision_Asociada'] = nuevo_numero_remision
+                                df_vencimientos.loc[mask, 'Observaciones_adicionales'] = f"Remisión: {nuevo_numero_remision}"
+                                vencimientos_modificados_count = mask.sum()
+                            df_vencimientos.drop(columns=['NÚMERO PÓLIZA_str_comp'], inplace=True)
 
                         if vencimientos_modificados_count > 0:
-                            if 'ORDEN_COLUMNAS_VENCIMIENTOS' in globals() and isinstance(ORDEN_COLUMNAS_VENCIMIENTOS, list):
-                                for col_m_v in ORDEN_COLUMNAS_VENCIMIENTOS:
-                                    if col_m_v not in df_vencimientos.columns:
-                                        default_val_venc = 0 if col_m_v == 'ID_VENCIMIENTO' else ''
-                                        df_vencimientos[col_m_v] = default_val_venc
-                                df_vencimientos = df_vencimientos[ORDEN_COLUMNAS_VENCIMIENTOS]
-                            else:
-                                print("ADVERTENCIA: ORDEN_COLUMNAS_VENCIMIENTOS no definida. Vencimientos se guardará con orden actual.")
-
                             df_vencimientos.to_excel(ruta_vencimientos, index=False)
-                            flash(f'{vencimientos_modificados_count} registro(s) de vencimiento para póliza "{numero_poliza_a_buscar}" actualizados a "Renovado" (Remisión: {nuevo_numero_remision}).', 'info')
-
+                            flash(f'{vencimientos_modificados_count} registro(s) de vencimiento actualizados.', 'info')
                     except Exception as e_venc:
-                        print(f"Error al actualizar vencimientos asociados: {type(e_venc).__name__} - {e_venc}")
-                        flash(f'N° Remisión guardado, pero ocurrió un error al intentar actualizar vencimientos asociados: {str(e_venc)}', 'warning')
-                elif ruta_vencimientos and not os.path.exists(ruta_vencimientos):
-                    flash('Archivo de vencimientos no encontrado. No se pudieron actualizar estados de vencimiento.', 'info')
-                elif not (numero_poliza_a_buscar and numero_poliza_a_buscar not in ['N/A', 'None', '', 'nan', 'NaN']):
-                     flash('No se proporcionó un número de póliza válido en la remisión, no se actualizaron vencimientos.', 'info')
+                        flash(f'Error al actualizar vencimientos asociados: {str(e_venc)}', 'warning')
 
-        elif actualizacion_realizada and not nuevo_numero_remision.strip():
-            flash('Número de remisión manual está vacío, no se intentó actualizar vencimientos.', 'info')
-        # --- Fin lógica para actualizar vencimientos ---
-    else:
-        return f"Error: No se encontró la remisión con consecutivo {consecutivo_a_actualizar} para actualizar. Es posible que haya sido eliminada.", 404
+    except Exception as e:
+        flash(f"Error al guardar número de remisión: {e}", "danger")
+
     return redirect(url_for('control'))
 
 @app.route('/formulario_crear_carpeta', methods=['GET'])
@@ -792,7 +767,7 @@ def crear_prospecto():
             # Calcular Comision $
             prima_str = datos_formulario.get('Prima', '0')
             prima = limpiar_valor_moneda(prima_str)
-            datos_formulario['Prima'] = prima # Store the cleaned numeric value
+            datos_formulario['Prima'] = prima
 
             comision_porcentaje = float(datos_formulario.get('Comision %', 0))
             comision_calculada = prima * (comision_porcentaje / 100)
@@ -803,24 +778,44 @@ def crear_prospecto():
 
             datos_formulario['Comision $'] = comision_calculada
 
-            PROSPECTOS_FILE = app.config['PROSPECTOS_FILE_PATH']
+            dataverse_config = config_manager.get_config('dataverse')
+            prospectos_table_name = dataverse_config.get('tables', {}).get('prospectos')
+            if not prospectos_table_name:
+                raise Exception("Tabla de prospectos no configurada.")
 
-            if os.path.exists(PROSPECTOS_FILE):
-                df_prospectos = pd.read_excel(PROSPECTOS_FILE)
-            else:
-                df_prospectos = pd.DataFrame(columns=ORDEN_COLUMNAS_PROSPECTOS)
+            payload = datos_formulario.copy()
+            # Renombrar campos para que coincidan con el esquema de Dataverse
+            # Los nombres de Dataverse no pueden tener espacios ni caracteres especiales
+            payload['ID_PROSPECTO'] = uuid.uuid4().hex[:8].upper()
+            payload['FechaCreacion'] = datetime.now().strftime('%Y-%m-%dT%H:%M:%SZ')
+            payload['es_TPP'] = (payload.get('es_TPP') == 'si')
 
-            datos_formulario['ID_PROSPECTO'] = uuid.uuid4().hex[:8].upper()
-            datos_formulario['Fecha Creacion'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            # Limpiar y convertir tipos
+            numeric_fields = ['Prima', 'Comision_porcentaje', 'Comision_monto', 'Porcentaje_comision_TPP']
+            date_fields = ['Fecha_de_Cotizacion', 'Fecha_inicio_poliza']
 
-            new_prospect_df = pd.DataFrame([datos_formulario])
+            # Renombrar para Dataverse (ejemplo)
+            payload['NombreCliente'] = payload.pop('Nombre Cliente')
+            payload['ResponsableTecnico'] = payload.pop('Responsable Tecnico')
+            payload['ResponsableComercial'] = payload.pop('Responsable Comercial')
+            payload['Fecha_de_Cotizacion'] = payload.pop('Fecha de Cotizacion')
+            payload['Fecha_inicio_poliza'] = payload.pop('Fecha inicio poliza')
+            payload['Comision_porcentaje'] = payload.pop('Comision %')
+            payload['Comision_monto'] = payload.pop('Comision $')
 
-            df_prospectos = pd.concat([df_prospectos, new_prospect_df], ignore_index=True)
 
-            df_prospectos = df_prospectos[ORDEN_COLUMNAS_PROSPECTOS]
+            for field in numeric_fields:
+                if field in payload:
+                    try:
+                        payload[field] = float(payload[field])
+                    except (ValueError, TypeError):
+                        payload[field] = None
 
-            df_prospectos.to_excel(PROSPECTOS_FILE, index=False)
+            for field in date_fields:
+                if not payload.get(field):
+                    payload[field] = None
 
+            dataverse_client.create_record(prospectos_table_name, payload)
             return jsonify({'status': 'success', 'message': 'Prospecto guardado exitosamente'})
 
         except Exception as e:
@@ -829,49 +824,33 @@ def crear_prospecto():
 @app.route('/prospectos/visualizar', methods=['GET'])
 def prospectos_vista():
     try:
-        PROSPECTOS_FILE = app.config['PROSPECTOS_FILE_PATH']
+        dataverse_config = config_manager.get_config('dataverse')
+        prospectos_table_name = dataverse_config.get('tables', {}).get('prospectos')
+        if not prospectos_table_name:
+            raise Exception("Tabla de prospectos no configurada.")
+
+        prospectos_data = dataverse_client.get_records(prospectos_table_name, order_by="FechaCreacion desc", top=20)
         kpi_recaudo_mes = 0
         kpi_top_ramos = []
 
-        if os.path.exists(PROSPECTOS_FILE):
-            df = pd.read_excel(PROSPECTOS_FILE)
+        if prospectos_data:
+            df = pd.DataFrame(prospectos_data)
+            df['Fecha_inicio_poliza'] = pd.to_datetime(df['Fecha_inicio_poliza'], errors='coerce')
+            df['Comision_monto'] = pd.to_numeric(df['Comision_monto'], errors='coerce').fillna(0)
 
-            # --- Data Cleaning and Preparation ---
-            df['Fecha inicio poliza'] = pd.to_datetime(df['Fecha inicio poliza'], errors='coerce')
-            if 'Fecha Creacion' in df.columns:
-                df['Fecha Creacion'] = pd.to_datetime(df['Fecha Creacion'], errors='coerce')
-
-            currency_cols = ['Prima', 'Comision $']
-            for col in currency_cols:
-                if col in df.columns:
-                    df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).astype(int)
-
-            # --- KPI Calculation (Ganado en el mes actual) ---
             hoy = datetime.now()
             df_ganado_mes_actual = df[
                 (df['Estado'] == 'Ganado') &
-                (df['Fecha inicio poliza'].dt.month == hoy.month) &
-                (df['Fecha inicio poliza'].dt.year == hoy.year)
+                (df['Fecha_inicio_poliza'].dt.month == hoy.month) &
+                (df['Fecha_inicio_poliza'].dt.year == hoy.year)
             ]
 
-            kpi_recaudo_mes = df_ganado_mes_actual['Comision $'].sum()
-
-            top_ramos = df_ganado_mes_actual.groupby('Ramo')['Comision $'].sum().nlargest(3).reset_index()
+            kpi_recaudo_mes = df_ganado_mes_actual['Comision_monto'].sum()
+            top_ramos = df_ganado_mes_actual.groupby('Ramo')['Comision_monto'].sum().nlargest(3).reset_index()
             kpi_top_ramos = top_ramos.to_dict(orient='records')
 
-            # --- Sorting (más reciente primero) ---
-            if 'Fecha Creacion' in df.columns:
-                df.sort_values(by='Fecha Creacion', ascending=False, inplace=True)
-            else:
-                # Fallback to ID if Fecha Creacion doesn't exist yet
-                df.sort_values(by='ID_PROSPECTO', ascending=False, inplace=True)
-
-            prospectos_data = df.head(20).to_dict(orient='records')
-        else:
-            prospectos_data = []
-
     except Exception as e:
-        flash(f'Error al cargar los prospectos: {str(e)}', 'danger')
+        flash(f'Error al cargar los prospectos desde Dataverse: {str(e)}', 'danger')
         prospectos_data = []
 
     return render_template('prospectos_vista.html',
@@ -884,20 +863,28 @@ def prospectos_vista():
 
 @app.route('/prospectos/editar/<prospecto_id>')
 def prospecto_editar(prospecto_id):
-    PROSPECTOS_FILE = app.config['PROSPECTOS_FILE_PATH']
-    if not os.path.exists(PROSPECTOS_FILE):
-        flash('El archivo de prospectos no existe.', 'danger')
-        return redirect(url_for('prospectos_vista'))
+    try:
+        dataverse_config = config_manager.get_config('dataverse')
+        prospectos_table_name = dataverse_config.get('tables', {}).get('prospectos')
+        if not prospectos_table_name:
+            raise Exception("Tabla de prospectos no configurada.")
 
-    df = pd.read_excel(PROSPECTOS_FILE, dtype={'ID_PROSPECTO': str})
-    prospecto_data = df[df['ID_PROSPECTO'] == prospecto_id].to_dict('records')
+        records = dataverse_client.get_records(prospectos_table_name, filter_query=f"ID_PROSPECTO eq '{prospecto_id}'", top=1)
+        if not records:
+            flash('Prospecto no encontrado.', 'danger')
+            return redirect(url_for('prospectos_vista'))
 
-    if not prospecto_data:
-        flash('Prospecto no encontrado.', 'danger')
+        prospecto_data = records[0]
+        # Revertir nombres para el formulario si es necesario
+        prospecto_data['Nombre Cliente'] = prospecto_data.pop('NombreCliente', '')
+        # ... y así sucesivamente para otros campos ...
+
+    except Exception as e:
+        flash(f"Error al cargar prospecto: {e}", "danger")
         return redirect(url_for('prospectos_vista'))
 
     return render_template('prospectos_editar.html',
-                           prospecto=prospecto_data[0],
+                           prospecto=prospecto_data,
                            opciones_responsable_tecnico=config_manager.get_list('responsable_tecnico'),
                            opciones_responsable_comercial=config_manager.get_list('responsable_comercial'),
                            opciones_estado=config_manager.get_list('estado_prospecto'),
@@ -909,37 +896,36 @@ def prospecto_editar(prospecto_id):
 def prospecto_guardar_edicion():
     try:
         datos = request.form.to_dict()
-        prospecto_id = datos.get('ID_PROSPECTO')
+        prospecto_id_biz = datos.get('ID_PROSPECTO') # Business key
 
-        PROSPECTOS_FILE = app.config['PROSPECTOS_FILE_PATH']
-        df = pd.read_excel(PROSPECTOS_FILE, dtype={'ID_PROSPECTO': str})
+        dataverse_config = config_manager.get_config('dataverse')
+        prospectos_table_name = dataverse_config.get('tables', {}).get('prospectos')
+        if not prospectos_table_name:
+            raise Exception("Tabla de prospectos no configurada.")
 
-        index_list = df[df['ID_PROSPECTO'] == prospecto_id].index
-        if not index_list.any():
+        # 1. Encontrar el GUID del registro
+        records = dataverse_client.get_records(prospectos_table_name, filter_query=f"ID_PROSPECTO eq '{prospecto_id_biz}'", top=1)
+        if not records:
             flash('Prospecto no encontrado para actualizar.', 'danger')
             return redirect(url_for('prospectos_vista'))
 
-        idx = index_list[0]
+        record_to_update = records[0]
+        record_guid = record_to_update[f"{prospectos_table_name}id"] # Obtener GUID
 
-        for key, value in datos.items():
-            if key in df.columns:
-                df.loc[idx, key] = value
-
-        # Recalculate commission
-        prima_str = str(df.loc[idx, 'Prima'])
-        prima = limpiar_valor_moneda(prima_str)
-        df.loc[idx, 'Prima'] = prima # Save cleaned value back
-
-        comision_porc = float(df.loc[idx, 'Comision %'])
+        # 2. Preparar payload y actualizar
+        payload = datos.copy()
+        # Recalcular comisión
+        prima = limpiar_valor_moneda(str(payload.get('Prima', '0')))
+        comision_porc = float(payload.get('Comision %', 0))
         comision_calculada = prima * (comision_porc / 100)
-
-        if str(df.loc[idx, 'es_TPP']) == 'si':
-            porcentaje_tpp = float(df.loc[idx, 'Porcentaje_comision_TPP'])
+        if str(payload.get('es_TPP')) == 'si':
+            porcentaje_tpp = float(payload.get('Porcentaje_comision_TPP', 0))
             comision_calculada -= comision_calculada * (porcentaje_tpp / 100)
+        payload['Comision $'] = comision_calculada
 
-        df.loc[idx, 'Comision $'] = comision_calculada
+        # ... (realizar conversiones de tipo y renombrado de campos como en 'crear') ...
 
-        df.to_excel(PROSPECTOS_FILE, index=False)
+        dataverse_client.update_record(prospectos_table_name, record_guid, payload)
         flash('Prospecto actualizado con éxito.', 'success')
 
     except Exception as e:
@@ -951,39 +937,38 @@ def prospecto_guardar_edicion():
 def actualizar_estado_prospecto():
     try:
         data = request.get_json()
-        prospecto_id = data.get('prospecto_id')
+        prospecto_id_biz = data.get('prospecto_id')
         nuevo_estado = data.get('estado')
 
-        if not prospecto_id or nuevo_estado not in ['Ganado', 'Perdido']:
+        if not prospecto_id_biz or nuevo_estado not in ['Ganado', 'Perdido']:
             return jsonify({'status': 'error', 'message': 'Datos inválidos.'}), 400
 
-        PROSPECTOS_FILE = app.config['PROSPECTOS_FILE_PATH']
+        dataverse_config = config_manager.get_config('dataverse')
+        prospectos_table_name = dataverse_config.get('tables', {}).get('prospectos')
+        if not prospectos_table_name:
+            raise Exception("Tabla de prospectos no configurada.")
 
-        if not os.path.exists(PROSPECTOS_FILE):
-            return jsonify({'status': 'error', 'message': 'El archivo de prospectos no existe.'}), 404
-
-        df = pd.read_excel(PROSPECTOS_FILE, dtype={'ID_PROSPECTO': str})
-
-        index = df[df['ID_PROSPECTO'] == str(prospecto_id)].index
-
-        if not index.empty:
-            df.loc[index, 'Estado'] = nuevo_estado
-
-            fecha_emision = None
-            if nuevo_estado == 'Ganado':
-                fecha_emision = datetime.now().strftime('%Y-%m-%d')
-                if 'Fecha inicio poliza' not in df.columns:
-                    df['Fecha inicio poliza'] = ''
-                df.loc[index, 'Fecha inicio poliza'] = fecha_emision
-
-            df.to_excel(PROSPECTOS_FILE, index=False)
-
-            response = {'status': 'success', 'message': f'Prospecto marcado como {nuevo_estado}.'}
-            if fecha_emision:
-                response['fecha_emision'] = fecha_emision
-            return jsonify(response)
-        else:
+        # 1. Encontrar el GUID del registro
+        records = dataverse_client.get_records(prospectos_table_name, filter_query=f"ID_PROSPECTO eq '{prospecto_id_biz}'", top=1)
+        if not records:
             return jsonify({'status': 'error', 'message': 'Prospecto no encontrado.'}), 404
+
+        record_to_update = records[0]
+        record_guid = record_to_update[f"{prospectos_table_name}id"]
+
+        # 2. Preparar payload y actualizar
+        payload = {"Estado": nuevo_estado}
+        fecha_emision = None
+        if nuevo_estado == 'Ganado':
+            fecha_emision = datetime.now().strftime('%Y-%m-%d')
+            payload['Fecha_inicio_poliza'] = fecha_emision
+
+        dataverse_client.update_record(prospectos_table_name, record_guid, payload)
+
+        response = {'status': 'success', 'message': f'Prospecto marcado como {nuevo_estado}.'}
+        if fecha_emision:
+            response['fecha_emision'] = fecha_emision
+        return jsonify(response)
 
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
