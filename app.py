@@ -508,25 +508,27 @@ def control():
     remisiones_ordenadas = sorted(remisiones_data, key=lambda r: str(r.get('consecutivo', '')), reverse=True)
     primeras_10_remisiones = remisiones_ordenadas[:10]
 
-    # Lista actualizada para incluir todos los campos relevantes, especialmente los financieros.
-    # Esto asegura que la plantilla 'control.html' reciba todos los datos necesarios.
     campos_esperados = [
         'consecutivo', 'fecha_recepcion', 'tomador', 'nit',
         'aseguradora', 'ramo', 'poliza',
         'fecha_inicio', 'fecha_fin', 'estado', 'numero_remision_manual',
         'archivos',
-        # Campos financieros clave que ahora se calculan y guardan
         'prima_neta',
         'Comision$',
         'ComisionTPP',
         'ComisionUIB',
-        'uib' # uib es el alias de ComisionUIB, pero lo incluimos por si se usa directamente
+        'uib'
     ]
     remisiones_list = []
     for r in primeras_10_remisiones:
         for campo in campos_esperados:
             if campo not in r:
                 r[campo] = 'N/A'
+        
+        # FIX: Ensure 'archivos' is a string to prevent .split() error on float (NaN)
+        if 'archivos' in r and not isinstance(r['archivos'], str):
+            r['archivos'] = ''
+
         remisiones_list.append(r)
     return render_template('control.html', remisiones=remisiones_list)
 
@@ -1432,15 +1434,16 @@ def visualizar_vencimientos():
         if search_term:
             df_filtrado = df_filtrado[df_filtrado['Tomador'].str.contains(search_term, case=False, na=False)]
 
-        # Excluir 'CUMPLIMIENTO' de los KPIs generales
-        df_sin_cumplimiento = df_filtrado[df_filtrado['RAMO PRINCIPAL'] != 'CUMPLIMIENTO']
+        # Excluir 'CUMPLIMIENTO' y 'SERIEDAD DE OFERTA' de los KPIs generales
+        ramos_a_excluir_kpi_general = ['CUMPLIMIENTO', 'SERIEDAD DE OFERTA']
+        df_para_kpis_generales = df_filtrado[~df_filtrado['RAMO PRINCIPAL'].isin(ramos_a_excluir_kpi_general)]
 
         # Calcular KPIs
         kpis = {
-            'vencer_15_dias': len(df_sin_cumplimiento[(df_sin_cumplimiento['Dias_Para_Vencer'] >= 0) & (df_sin_cumplimiento['Dias_Para_Vencer'] <= 15)]),
-            'vencer_30_dias': len(df_sin_cumplimiento[(df_sin_cumplimiento['Dias_Para_Vencer'] >= 0) & (df_sin_cumplimiento['Dias_Para_Vencer'] <= 30)]),
-            'vencer_60_dias': len(df_sin_cumplimiento[(df_sin_cumplimiento['Dias_Para_Vencer'] >= 0) & (df_sin_cumplimiento['Dias_Para_Vencer'] <= 60)]),
-            'vencidas': len(df_sin_cumplimiento[df_sin_cumplimiento['Dias_Para_Vencer'] < 0]),
+            'vencer_15_dias': len(df_para_kpis_generales[(df_para_kpis_generales['Dias_Para_Vencer'] >= 0) & (df_para_kpis_generales['Dias_Para_Vencer'] <= 15)]),
+            'vencer_30_dias': len(df_para_kpis_generales[(df_para_kpis_generales['Dias_Para_Vencer'] >= 0) & (df_para_kpis_generales['Dias_Para_Vencer'] <= 30)]),
+            'vencer_60_dias': len(df_para_kpis_generales[(df_para_kpis_generales['Dias_Para_Vencer'] >= 0) & (df_para_kpis_generales['Dias_Para_Vencer'] <= 60)]),
+            'vencidas': len(df_para_kpis_generales[df_para_kpis_generales['Dias_Para_Vencer'] < 0]),
             'cumplimiento': len(df_filtrado[(df_filtrado['RAMO PRINCIPAL'] == 'CUMPLIMIENTO') & (df_filtrado['Dias_Para_Vencer'] >= 0) & (df_filtrado['Dias_Para_Vencer'] <= 45)])
         }
 
@@ -1466,32 +1469,45 @@ def visualizar_vencimientos():
         ]
 
         def determinar_alerta(dias, estado_actual):
-            estado_actual_lower = str(estado_actual).lower() # Normalize estado for comparison
+            estado_actual_lower = str(estado_actual).lower()
 
+            # Final states with specific icons
             if estado_actual_lower == 'renovado':
-                return {'css_class': 'alerta-renovado', 'icon': 'fas fa-check-double', 'text': 'Renovado'}
+                return {'icon': 'fas fa-check-double', 'css_class': 'alerta-renovado', 'text': 'Renovado', 'is_critical': False}
             elif estado_actual_lower == 'no renovado':
-                return {'css_class': 'alerta-no-renovado', 'icon': 'fas fa-ban', 'text': 'No Renovado'}
+                return {'icon': 'fas fa-ban', 'css_class': 'alerta-no-renovado', 'text': 'No Renovado', 'is_critical': False}
 
             if pd.isna(dias):
-                return {'css_class': 'alerta-gris', 'icon': 'fas fa-question-circle', 'text': 'Fecha Fin Inválida'}
+                return {'icon': 'fas fa-question-circle', 'css_class': 'alerta-gris', 'text': 'Fecha Fin Inválida', 'is_critical': False}
 
             dias = int(dias)
+            
+            # Defaults
+            css_class = 'alerta-azul'
+            icon = 'fas fa-info-circle'
+            is_critical = False
 
-            if dias < 0 and estado_actual_lower in ['pendiente seguimiento', 'en proceso', '']:
-                return {'css_class': 'alerta-rojo', 'icon': 'fas fa-skull-crossbones', 'text': f'Vencido (Hace {-dias} días)'}
-
-            if estado_actual_lower == 'vencido':
-                return {'css_class': 'alerta-rojo', 'icon': 'fas fa-calendar-times', 'text': 'Vencido (Estado)'}
-
+            # Critical case
             if dias <= 5:
-                return {'css_class': 'alerta-rojo', 'icon': 'fas fa-skull-crossbones', 'text': f'Vencido (Hace {-dias} días)' if dias < 0 else f'Vence en {dias} días'}
-            elif 6 <= dias <= 20:
-                return {'css_class': 'alerta-amarillo', 'icon': 'fas fa-exclamation-triangle', 'text': f'Vence en {dias} días'}
-            elif 21 <= dias <= 30:
-                return {'css_class': 'alerta-verde', 'icon': 'fas fa-calendar-check', 'text': f'Vence en {dias} días'}
+                is_critical = True
+
+            # Semaphore logic for color AND icon
+            if dias <= 10:
+                css_class = 'alerta-rojo'
+                icon = 'fas fa-skull-crossbones'
+            elif dias <= 20: # 11-20 days
+                css_class = 'alerta-amarillo'
+                icon = 'fas fa-exclamation-triangle'
+            elif dias <= 30: # 21-30 days
+                css_class = 'alerta-verde'
+                icon = 'fas fa-calendar-check'
+
+            if dias < 0:
+                text = f'Vencido (Hace {-dias} días)'
             else:
-                return {'css_class': 'alerta-azul', 'icon': 'fas fa-info-circle', 'text': f'Vence en {dias} días'}
+                text = f'Vence en {dias} días'
+            
+            return {'icon': icon, 'css_class': css_class, 'text': text, 'is_critical': is_critical}
 
         if 'Estado' not in df_filtrado.columns:
             df_filtrado['Estado'] = ''
@@ -1502,10 +1518,10 @@ def visualizar_vencimientos():
         resultados_alerta = df_filtrado.apply(lambda row: determinar_alerta(row.get('Dias_Para_Vencer'), row.get('Estado')), axis=1)
 
         # Se asignan los resultados al DataFrame filtrado.
-        # Es crucial que 'resultados_alerta' tenga el mismo número de filas que 'df_filtrado'.
         df_filtrado['Indicador_Vencimiento_CSS_Class'] = [a['css_class'] for a in resultados_alerta]
         df_filtrado['Indicador_Vencimiento_Icon'] = [a['icon'] for a in resultados_alerta]
         df_filtrado['Indicador_Vencimiento_Text'] = [a['text'] for a in resultados_alerta]
+        df_filtrado['Indicador_Vencimiento_Is_Critical'] = [a['is_critical'] for a in resultados_alerta]
 
         df_display = df_filtrado.copy()
 
