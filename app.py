@@ -540,16 +540,7 @@ def control():
         'consecutivo', 'fecha_recepcion', 'tomador', 'nit',
         'aseguradora', 'ramo', 'poliza',
         'fecha_inicio', 'fecha_fin', 'estado', 'numero_remision_manual',
-<<<<<<< HEAD
         'archivos', 'prima_neta', 'Comision$', 'ComisionTPP', 'ComisionUIB', 'uib'
-=======
-        'archivos',
-        'prima_neta',
-        'Comision$',
-        'ComisionTPP',
-        'ComisionUIB',
-        'uib'
->>>>>>> feature/unified-folder-creation
     ]
     remisiones_list = []
     for r in remisiones_data:
