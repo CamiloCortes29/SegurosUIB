@@ -1,4 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify, flash, send_file
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from werkzeug.security import generate_password_hash, check_password_hash
 import os
 import pandas as pd
 from werkzeug.utils import secure_filename
@@ -54,6 +56,29 @@ def get_year_from_date(date_str):
 
 app = Flask(__name__) # Ensure app instance is created
 app.config['SECRET_KEY'] = os.environ.get('FLASK_SECRET_KEY', 'dev_super_secret_key_12345_replace_in_production')
+
+# --- Login Manager Configuration ---
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login' # The name of the view to redirect to when login is required.
+login_manager.login_message = "Por favor, inicie sesión para acceder a esta página."
+login_manager.login_message_category = "info"
+
+# --- User Model and In-Memory Store ---
+class User(UserMixin):
+    def __init__(self, id, username, password_hash):
+        self.id = id
+        self.username = username
+        self.password_hash = password_hash
+
+# In-memory user database
+users = {
+    "1": User(id="1", username="admin", password_hash=generate_password_hash("1234"))
+}
+
+@login_manager.user_loader
+def load_user(user_id):
+    return users.get(user_id)
 
 # Rutas BASE_DIR debe estar al nivel de donde corre app.py
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -293,15 +318,47 @@ def cargar_remisiones():
             return []
     return []
 
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        
+        # Find user by username
+        user = None
+        for u in users.values():
+            if u.username == username:
+                user = u
+                break
+        
+        if user and check_password_hash(user.password_hash, password):
+            login_user(user)
+            flash('Inicio de sesión exitoso.', 'success')
+            return redirect(url_for('index'))
+        else:
+            flash('Nombre de usuario o contraseña incorrectos.', 'danger')
+            
+    return render_template('login.html')
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    flash('Ha cerrado sesión exitosamente.', 'info')
+    return redirect(url_for('login'))
+
 @app.route('/', methods=['GET'])
+@login_required
 def index():
     return render_template('index.html')
 
 @app.route('/carga_maestra', methods=['GET'])
+@login_required
 def mostrar_formulario_carga_maestra():
     return render_template('carga_maestra.html')
 
 @app.route('/remision/nueva', methods=['GET'])
+@login_required
 def formulario_remision():
     # Obtener datos del prospecto desde la URL para autocompletar
     prospecto_data = {
@@ -325,6 +382,7 @@ def formulario_remision():
                           )
 
 @app.route('/registrar', methods=['POST'])
+@login_required
 def registrar():
     try:
         datos_formulario = request.form.to_dict()
@@ -503,6 +561,7 @@ def registrar():
         return jsonify({'success': False, 'message': f'Error interno del servidor: {e}'}), 500
 
 @app.route('/control')
+@login_required
 def control():
     remisiones_data = cargar_remisiones()
     remisiones_ordenadas = sorted(remisiones_data, key=lambda r: str(r.get('consecutivo', '')), reverse=True)
@@ -533,6 +592,7 @@ def control():
     return render_template('control.html', remisiones=remisiones_list)
 
 @app.route('/marcar_creado', methods=['POST'])
+@login_required
 def marcar_creado():
     consecutivo_a_marcar = request.form.get('consecutivo')
     remisiones_actuales = cargar_remisiones()
@@ -551,11 +611,13 @@ def marcar_creado():
     return redirect(url_for('control'))
 
 @app.route('/plantilla', methods=['POST'])
+@login_required
 def plantilla():
     datos_formulario = request.form.to_dict()
     return render_template('plantilla_confirmacion.html', datos=datos_formulario)
 
 @app.route('/resumen/<string:consecutivo_id>')
+@login_required
 def mostrar_resumen(consecutivo_id):
     remisiones = cargar_remisiones()
     remision_encontrada = None
@@ -569,6 +631,7 @@ def mostrar_resumen(consecutivo_id):
         return f"Error: Remisión con consecutivo {consecutivo_id} no encontrada. Verifique el número o contacte soporte.", 404
 
 @app.route('/editar_remision_numero/<string:consecutivo_id>', methods=['GET'])
+@login_required
 def editar_remision(consecutivo_id):
     remisiones = cargar_remisiones()
     remision_a_editar = None
@@ -590,6 +653,7 @@ def editar_remision(consecutivo_id):
         return f"Error: Remisión con consecutivo {consecutivo_id} no encontrada. Verifique el número o contacte soporte.", 404
 
 @app.route('/guardar_numero_remision', methods=['POST'])
+@login_required
 def guardar_numero_remision():
     consecutivo_a_actualizar = request.form.get('consecutivo')
     nuevo_numero_remision = request.form.get('numero_remision_manual', '').strip()
@@ -705,11 +769,13 @@ def guardar_numero_remision():
     return redirect(url_for('control'))
 
 @app.route('/formulario_crear_carpeta', methods=['GET'])
+@login_required
 def mostrar_formulario_crear_carpeta():
     ano_actual = datetime.now().strftime('%Y')
     return render_template('crear_carpeta.html', ano_actual=ano_actual)
 
 @app.route('/ejecutar_crear_carpeta', methods=['POST'])
+@login_required
 def ejecutar_crear_carpeta():
     tipo_carpeta = request.form.get('tipo_carpeta')
     nombre_entidad = request.form.get('nombre_entidad', 'SIN_NOMBRE').strip()
@@ -777,6 +843,7 @@ def ejecutar_crear_carpeta():
         return jsonify({'success': False, 'message': 'Tipo de carpeta no válido.'}), 400
 
 @app.route('/prospectos/crear', methods=['GET', 'POST'])
+@login_required
 def crear_prospecto():
     if request.method == 'GET':
         return render_template('prospectos_crear.html',
@@ -829,6 +896,7 @@ def crear_prospecto():
             return jsonify({'status': 'error', 'message': str(e)})
 
 @app.route('/prospectos/visualizar', methods=['GET'])
+@login_required
 def prospectos_vista():
     try:
         PROSPECTOS_FILE = app.config['PROSPECTOS_FILE_PATH']
@@ -885,6 +953,7 @@ def prospectos_vista():
                            kpi_top_ramos=kpi_top_ramos)
 
 @app.route('/prospectos/editar/<prospecto_id>')
+@login_required
 def prospecto_editar(prospecto_id):
     PROSPECTOS_FILE = app.config['PROSPECTOS_FILE_PATH']
     if not os.path.exists(PROSPECTOS_FILE):
@@ -908,6 +977,7 @@ def prospecto_editar(prospecto_id):
                            opciones_vendedor=config_manager.get_list('vendedores'))
 
 @app.route('/prospectos/guardar_edicion', methods=['POST'])
+@login_required
 def prospecto_guardar_edicion():
     try:
         datos = request.form.to_dict()
@@ -950,6 +1020,7 @@ def prospecto_guardar_edicion():
     return redirect(url_for('prospectos_vista'))
 
 @app.route('/prospectos/actualizar_estado', methods=['POST'])
+@login_required
 def actualizar_estado_prospecto():
     try:
         data = request.get_json()
@@ -1015,6 +1086,7 @@ def format_date_in_spanish(date_str):
         return date_str # Return original if format is unexpected
 
 @app.route('/correspondencia/vista_previa')
+@login_required
 def correspondencia_vista_previa():
     try:
         datos = request.args.to_dict()
@@ -1070,6 +1142,7 @@ def correspondencia_vista_previa():
         return f"Error al generar la vista previa: {e}", 500
 
 @app.route('/siniestros/registrar', methods=['GET', 'POST'])
+@login_required
 def siniestros_registrar():
     if request.method == 'GET':
         return render_template('siniestros_registrar.html')
@@ -1116,6 +1189,7 @@ def siniestros_registrar():
             return jsonify({'status': 'error', 'message': f'Error interno del servidor: {e}'}), 500
 
 @app.route('/cartera/visualizar', methods=['GET'])
+@login_required
 def visualizar_cartera():
     ruta_archivo_procesado = app.config['CARTERA_PROCESADA_FILE_PATH']
 
@@ -1225,6 +1299,7 @@ def visualizar_cartera():
         return redirect(url_for('mostrar_formulario_carga_maestra'))
 
 @app.route('/cartera/editar/<int:id_registro>', methods=['GET'])
+@login_required
 def mostrar_formulario_editar_cartera(id_registro):
     ruta_archivo_procesado = app.config['CARTERA_PROCESADA_FILE_PATH']
     if not os.path.exists(ruta_archivo_procesado):
@@ -1250,6 +1325,7 @@ def mostrar_formulario_editar_cartera(id_registro):
         return redirect(url_for('visualizar_cartera'))
 
 @app.route('/cartera/guardar_edicion', methods=['POST'])
+@login_required
 def guardar_edicion_cartera():
     id_cartera_actualizar = request.form.get('id_cartera')
     if not id_cartera_actualizar:
@@ -1314,6 +1390,7 @@ def guardar_edicion_cartera():
     return redirect(url_for('visualizar_cartera'))
 
 @app.route('/cartera/aplicar_factura_lote', methods=['POST'])
+@login_required
 def aplicar_factura_lote():
     try:
         data = request.get_json()
@@ -1383,6 +1460,7 @@ def aplicar_factura_lote():
         return jsonify({'success': False, 'message': f'Ocurrió un error interno en el servidor al intentar aplicar la factura al lote. Por favor, contacte soporte.'}), 500
 
 @app.route('/cartera/descargar_reporte_final', methods=['GET'])
+@login_required
 def descargar_reporte_cartera_final():
     try:
         ruta_archivo = app.config['CARTERA_PROCESADA_FILE_PATH']
@@ -1405,6 +1483,7 @@ def descargar_reporte_cartera_final():
         return redirect(url_for('visualizar_cartera'))
 
 @app.route('/vencimientos/visualizar', methods=['GET'])
+@login_required
 def visualizar_vencimientos():
     ruta_archivo_vencimientos = app.config['VENCIMIENTOS_PROCESADA_FILE_PATH']
 
@@ -1550,6 +1629,7 @@ def visualizar_vencimientos():
         return redirect(url_for('mostrar_formulario_carga_maestra'))
 
 @app.route('/vencimientos/actualizar_registro', methods=['POST'])
+@login_required
 def actualizar_registro_vencimiento():
     try:
         data = request.get_json()
@@ -1628,6 +1708,7 @@ def actualizar_registro_vencimiento():
         return jsonify({'success': False, 'message': f'Ocurrió un error interno en el servidor: {str(e)}'}), 500
 
 @app.route('/procesar_reporte_maestro', methods=['POST'])
+@login_required
 def procesar_reporte_maestro():
     # --- 1. File Upload Validation ---
     if 'archivo' not in request.files:
@@ -1782,6 +1863,7 @@ def procesar_reporte_maestro():
     return redirect(url_for('index')) # Final redirect
 
 @app.route('/recaudo')
+@login_required
 def recaudo():
     # Initialize all variables
     total_renovaciones, total_prospectos, total_modificaciones, total_general, total_tpp = 0, 0, 0, 0, 0
@@ -1850,6 +1932,7 @@ def recaudo():
                            chart_data=chart_data)
 
 @app.route('/visualizar_sarlaft', methods=['GET'])
+@login_required
 def visualizar_sarlaft():
     search_query = request.args.get('search_query', '').strip().lower()
     client_folders_path = app.config['CLIENT_FOLDERS_BASE_DIR']
@@ -1864,6 +1947,7 @@ def visualizar_sarlaft():
     return render_template('visualizar_sarlaft.html', folders=found_folders, search_query=search_query)
 
 @app.route('/visualizar_sarlaft/<folder_name>')
+@login_required
 def visualizar_sarlaft_docs(folder_name):
     client_folder_path = os.path.join(app.config['CLIENT_FOLDERS_BASE_DIR'], folder_name)
     sarlaft_folder_path = os.path.join(client_folder_path, 'SARLAFT')
@@ -1882,6 +1966,7 @@ def visualizar_sarlaft_docs(folder_name):
     return render_template('visualizar_sarlaft_docs.html', folder_name=folder_name, found_docs=found_docs)
 
 @app.route('/serve_sarlaft_doc/<folder_name>/<year>/<doc_name>')
+@login_required
 def serve_sarlaft_doc(folder_name, year, doc_name):
     file_path = os.path.join(app.config['CLIENT_FOLDERS_BASE_DIR'], folder_name, 'SARLAFT', year, doc_name)
     if os.path.exists(file_path):
@@ -1890,6 +1975,7 @@ def serve_sarlaft_doc(folder_name, year, doc_name):
         return "Archivo no encontrado", 404
 
 @app.route('/cobros/editar/<id_cobro>')
+@login_required
 def editar_cobro(id_cobro):
     cobro_data = None
     if os.path.exists(COBROS_FILE):
@@ -1907,6 +1993,7 @@ def editar_cobro(id_cobro):
     return render_template('editar_cobro.html', cobro=cobro_data[0] if cobro_data else None)
 
 @app.route('/cobros')
+@login_required
 def panel_cobros():
     cobros_list = []
     pagos_list = []
@@ -1940,6 +2027,7 @@ def panel_cobros():
     return render_template('cobros.html', cobros=cobros_list, pagos=pagos_list)
 
 @app.route('/marcar_cobrado/<id_cobro>', methods=['POST'])
+@login_required
 def marcar_cobrado(id_cobro):
     if os.path.exists(COBROS_FILE):
         try:

@@ -54,12 +54,12 @@
             </li>
             <li class="nav-item">
                 <a class="nav-link" href="{{ url_for('siniestros_registrar') }}">
-                    <i class="fas fa-car-crash fa-fw"></i> Siniestro
+                    <i class="fas fa-car-crash fa-fw"></i> Siniestros
                 </a>
             </li>
             <li class="nav-item">
                 <a class="nav-link" href="{{ url_for('recaudo') }}">
-                    <i class="fas fa-chart-line fa-fw"></i> Recaudos
+                    <i class="fas fa-chart-line fa-fw"></i> Producción
                 </a>
             </li>
             <li class="nav-item">
@@ -82,6 +82,14 @@
                     <i class="fas fa-tachometer-alt fa-fw"></i> Admin
                 </a>
             </li>
+            <!-- User Info and Logout -->
+            {% if current_user.is_authenticated %}
+            <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('logout') }}">
+                    <i class="fas fa-sign-out-alt fa-fw"></i> Cerrar Sesión
+                </a>
+            </li>
+            {% endif %}
         </ul>
     </div>
 
