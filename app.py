@@ -178,7 +178,8 @@ COBROS_FILE = os.path.join(BASE_DIR, COBROS_FILENAME)
 ORDEN_COLUMNAS_COBROS = [
     'ID_COBRO', 'CONSECUTIVO_REMISION', 'Tomador', 'NIT_CC', 'Aseguradora', 'Ramo',
     'N_Poliza', 'N_Cuota', 'Total_Cuotas', 'Fecha_Vencimiento_Cuota',
-    'Fecha_Inicio_Vigencia', 'Fecha_Fin_Vigencia', 'Estado', 'Tipo_Movimiento'
+    'Fecha_Inicio_Vigencia', 'Fecha_Fin_Vigencia', 'Estado', 'Tipo_Movimiento',
+    'Periodicidad'
 ]
 
 # This is the definitive column order for remisiones.xlsx
@@ -517,16 +518,22 @@ def registrar():
 
         if guardar_remision(datos):
             # --- Lógica para generar cuotas de cobro ---
-            if datos.get('periodicidad_pago') == 'Mensual' and datos.get('forma_pago') != 'Contado':
+            periodicidad = datos.get('periodicidad_pago')
+            if datos.get('forma_pago') != 'Contado' and periodicidad in ['Mensual', 'Trimestral', 'Anual']:
                 try:
                     num_cuotas = int(datos.get('numero_cuotas', 0))
                     if num_cuotas > 0:
                         nuevos_cobros = []
-                        # Use YYYY-MM-DD format for parsing, which is what HTML date inputs provide
                         fecha_inicio_dt = datetime.strptime(datos.get('fecha_inicio'), '%Y-%m-%d')
+                        
+                        months_increment = 1 # Default para Mensual
+                        if periodicidad == 'Trimestral':
+                            months_increment = 3
+                        elif periodicidad == 'Anual':
+                            months_increment = 12
 
                         for i in range(num_cuotas):
-                            fecha_vencimiento = fecha_inicio_dt + relativedelta(months=i)
+                            fecha_vencimiento = fecha_inicio_dt + relativedelta(months=i * months_increment)
 
                             cobro = {
                                 'ID_COBRO': uuid.uuid4().hex[:10].upper(),
@@ -542,11 +549,13 @@ def registrar():
                                 'Fecha_Inicio_Vigencia': datos.get('fecha_inicio'),
                                 'Fecha_Fin_Vigencia': datos.get('fecha_fin'),
                                 'Estado': 'Pendiente',
-                                'Tipo_Movimiento': datos_formulario.get('tipo_movimiento', 'Cobro mensual')
+                                'Tipo_Movimiento': 'Cobro',
+                                'Periodicidad': periodicidad
                             }
                             nuevos_cobros.append(cobro)
 
-                        guardar_cobros(nuevos_cobros)
+                        if nuevos_cobros:
+                            guardar_cobros(nuevos_cobros)
                 except (ValueError, TypeError) as e:
                     print(f"Error al procesar cuotas de cobro para {datos.get('consecutivo')}: {e}")
 
@@ -1995,36 +2004,106 @@ def editar_cobro(id_cobro):
 @app.route('/cobros')
 @login_required
 def panel_cobros():
-    cobros_list = []
-    pagos_list = []
-    if os.path.exists(COBROS_FILE):
-        try:
-            df = pd.read_excel(COBROS_FILE)
-            df['Fecha_Vencimiento_Cuota'] = pd.to_datetime(df['Fecha_Vencimiento_Cuota'], errors='coerce')
-            df.dropna(subset=['Fecha_Vencimiento_Cuota'], inplace=True)
+    try:
+        # --- 1. Carga y Preparación de Datos ---
+        if not os.path.exists(COBROS_FILE):
+            flash('No se encontró el archivo de cobros.', 'warning')
+            return render_template('cobros.html', 
+                                   cobros_data={'records': [], 'kpis': {}, 'pagination': None, 'selected_period': 'Mensual'},
+                                   pagos_data={'records': [], 'kpis': {}, 'pagination': None, 'selected_period': 'Mensual'},
+                                   opciones_periodicidad=[])
 
-            hoy = datetime.now()
-            df_filtrado = df[
-                (df['Fecha_Vencimiento_Cuota'].dt.month == hoy.month) &
-                (df['Fecha_Vencimiento_Cuota'].dt.year == hoy.year)
+        df = pd.read_excel(COBROS_FILE)
+        df['Fecha_Vencimiento_Cuota'] = pd.to_datetime(df['Fecha_Vencimiento_Cuota'], errors='coerce')
+        df.dropna(subset=['Fecha_Vencimiento_Cuota'], inplace=True)
+        
+        # --- Compatibilidad para registros antiguos ---
+        if 'Periodicidad' not in df.columns: df['Periodicidad'] = 'Mensual'
+        df['Periodicidad'].fillna('Mensual', inplace=True)
+        if 'Tipo_Movimiento' not in df.columns: df['Tipo_Movimiento'] = 'Cobro'
+        df['Tipo_Movimiento'].fillna('Cobro', inplace=True)
+
+        opciones_periodicidad = config_manager.get_list('periodicidad_pago')
+        hoy = datetime.now()
+
+        # --- 2. Separar DataFrames ---
+        df_cobros_raw = df[df['Tipo_Movimiento'].str.contains('Cobro', case=False, na=False)].copy()
+        df_pagos_raw = df[df['Tipo_Movimiento'].str.contains('Pago', case=False, na=False)].copy()
+
+        # --- 3. Función de procesamiento reutilizable ---
+        def process_section(df_raw, section_name_prefix):
+            kpis = {}
+            primer_dia_mes_actual = hoy.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+            # --- DataFrames para cada categoría de filtro ---
+            df_pendientes = df_raw[df_raw['Estado'] == 'Pendiente'].copy()
+            
+            # "Mensual": todos los pendientes del mes actual
+            df_mensual_actual = df_pendientes[
+                (df_pendientes['Fecha_Vencimiento_Cuota'].dt.month == hoy.month) & 
+                (df_pendientes['Fecha_Vencimiento_Cuota'].dt.year == hoy.year)
             ]
+            
+            # "Futuros": todos los pendientes a partir de hoy
+            df_futuro = df_pendientes[df_pendientes['Fecha_Vencimiento_Cuota'] >= hoy]
+            
+            # "Pasados": todos los pendientes antes del mes actual
+            df_pasados = df_pendientes[df_pendientes['Fecha_Vencimiento_Cuota'] < primer_dia_mes_actual]
 
-            # Handle missing Tipo_Movimiento column for backward compatibility
-            if 'Tipo_Movimiento' not in df_filtrado.columns:
-                df_filtrado['Tipo_Movimiento'] = 'Cobro' # Default old records to 'Cobro'
-            df_filtrado['Tipo_Movimiento'].fillna('Cobro', inplace=True)
+            # --- Lógica para KPIs ---
+            kpis['Mensual'] = len(df_mensual_actual)
+            kpis['Trimestral'] = len(df_futuro[df_futuro['Periodicidad'] == 'Trimestral'].drop_duplicates(subset=['Tomador', 'N_Poliza']))
+            kpis['Anual'] = len(df_futuro[df_futuro['Periodicidad'] == 'Anual'].drop_duplicates(subset=['Tomador', 'N_Poliza']))
+            kpis['Pendientes Mes Anterior'] = len(df_pasados)
 
-            # Split into two dataframes using contains for flexibility
-            df_cobros = df_filtrado[df_filtrado['Tipo_Movimiento'].str.contains('Cobro', case=False, na=False)].sort_values(by='Fecha_Vencimiento_Cuota')
-            df_pagos = df_filtrado[df_filtrado['Tipo_Movimiento'].str.contains('Pago', case=False, na=False)].sort_values(by='Fecha_Vencimiento_Cuota')
+            # --- Lógica para selección de tabla y paginación ---
+            periodicidad_seleccionada = request.args.get(f'periodicidad_{section_name_prefix}', 'Mensual')
+            page = request.args.get(f'page_{section_name_prefix}', 1, type=int)
+            per_page = 15
 
-            cobros_list = df_cobros.to_dict(orient='records')
-            pagos_list = df_pagos.to_dict(orient='records')
+            if periodicidad_seleccionada == 'Mensual':
+                registros_filtrados_df = df_mensual_actual
+            elif periodicidad_seleccionada == 'Pendientes Mes Anterior':
+                registros_filtrados_df = df_pasados
+            else: # Trimestral, Anual, etc.
+                df_futuro_filtrado = df_futuro[df_futuro['Periodicidad'] == periodicidad_seleccionada]
+                registros_filtrados_df = df_futuro_filtrado.sort_values('Fecha_Vencimiento_Cuota').drop_duplicates(subset=['Tomador', 'N_Poliza'], keep='first')
 
-        except Exception as e:
-            flash(f"Error al leer o procesar el archivo de cobros: {e}", "danger")
+            total_registros = len(registros_filtrados_df)
+            total_pages = (total_registros + per_page - 1) // per_page if per_page > 0 else 0
+            
+            start = (page - 1) * per_page
+            end = start + per_page
+            registros_paginados_df = registros_filtrados_df.iloc[start:end]
 
-    return render_template('cobros.html', cobros=cobros_list, pagos=pagos_list)
+            records_list = registros_paginados_df.sort_values(by='Fecha_Vencimiento_Cuota').to_dict(orient='records')
+
+            pagination_info = {
+                'page': page, 'total_pages': total_pages, 'total_registros': total_registros,
+                'has_prev': page > 1, 'has_next': page < total_pages,
+                'prev_num': page - 1, 'next_num': page + 1,
+                'param_prefix': section_name_prefix
+            }
+            
+            return {
+                'records': records_list, 'kpis': kpis, 'pagination': pagination_info,
+                'selected_period': periodicidad_seleccionada
+            }
+
+        # --- 4. Procesar ambas secciones ---
+        cobros_data = process_section(df_cobros_raw, 'cobros')
+        pagos_data = process_section(df_pagos_raw, 'pagos')
+
+    except Exception as e:
+        flash(f"Error al procesar el panel de cobros: {e}", "danger")
+        import traceback
+        traceback.print_exc()
+        return redirect(url_for('index'))
+
+    return render_template('cobros.html', 
+                           cobros_data=cobros_data,
+                           pagos_data=pagos_data,
+                           opciones_periodicidad=opciones_periodicidad)
 
 @app.route('/marcar_cobrado/<id_cobro>', methods=['POST'])
 @login_required

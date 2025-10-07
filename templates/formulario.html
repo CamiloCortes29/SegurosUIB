@@ -300,21 +300,42 @@ document.addEventListener('DOMContentLoaded', function() {
     const periodicidadSelect = document.getElementById('periodicidad_pago');
     const formaPagoSelect = document.getElementById('forma_pago');
     const cuotasGroup = document.getElementById('numero_cuotas_group');
+    const cuotasInput = document.getElementById('numero_cuotas');
     const tipoMovimientoGroup = document.getElementById('tipo_movimiento_group');
 
-    function toggleCuotasField() {
+    function handlePaymentOptionsChange() {
         const periodicidad = periodicidadSelect.value;
         const formaPago = formaPagoSelect.value;
-        const formasPagoValidas = ['Fraccionado', 'Acuerdo de pago', 'Cobro mensual', 'Financiado'];
-        const show = periodicidad === 'Mensual' && formasPagoValidas.includes(formaPago);
-        
-        cuotasGroup.style.display = show ? 'block' : 'none';
-        cuotasGroup.querySelector('input').required = show;
-        tipoMovimientoGroup.style.display = show ? 'block' : 'none';
-        tipoMovimientoGroup.querySelector('select').required = show;
+        const formasPagoConCuotas = ['Fraccionado', 'Acuerdo de pago', 'Cobro mensual', 'Financiado'];
+
+        const showCuotas = formasPagoConCuotas.includes(formaPago);
+
+        cuotasGroup.style.display = showCuotas ? 'block' : 'none';
+        cuotasInput.required = showCuotas;
+        tipoMovimientoGroup.style.display = showCuotas ? 'block' : 'none';
+        tipoMovimientoGroup.querySelector('select').required = showCuotas;
+
+        if (showCuotas) {
+            switch (periodicidad) {
+                case 'Mensual':
+                    cuotasInput.value = 12;
+                    break;
+                case 'Trimestral':
+                    cuotasInput.value = 4;
+                    break;
+                case 'Anual':
+                    cuotasInput.value = 1;
+                    break;
+                default:
+                    cuotasInput.value = ''; // Clear if no periodicity is selected
+                    break;
+            }
+        } else {
+            cuotasInput.value = ''; // Clear if payment form is 'Contado'
+        }
     }
 
-    [periodicidadSelect, formaPagoSelect].forEach(el => el.addEventListener('change', toggleCuotasField));
+    [periodicidadSelect, formaPagoSelect].forEach(el => el.addEventListener('change', handlePaymentOptionsChange));
 
     document.getElementById('categorias_grupo').addEventListener('change', function() {
         const otroGrupoInput = document.getElementById('categorias_grupo_otro');
