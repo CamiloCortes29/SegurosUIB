@@ -162,8 +162,8 @@
                                 <label for="nombre_tpp" class="form-label">Nombre TPP</label>
                                 <select class="form-select" id="nombre_tpp" name="Nombre_TPP">
                                     <option value="">Seleccione Vendedor...</option>
-                                    {% for opt in opciones_vendedor %}
-                                    <option value="{{ opt }}" {% if opt == prospecto.Nombre_TPP %}selected{% endif %}>{{ opt }}</option>
+                                    {% for vendedor in opciones_vendedor %}
+                                    <option value="{{ vendedor.nombre }}" data-comision="{{ vendedor.comision }}" {% if vendedor.nombre == prospecto.Nombre_TPP %}selected{% endif %}>{{ vendedor.nombre }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
@@ -280,6 +280,16 @@ document.addEventListener('DOMContentLoaded', function() {
         calcularComision();
     });
     porcentajeTppInput.addEventListener('input', calcularComision);
+
+    document.getElementById('nombre_tpp').addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        if (selectedOption) {
+            const comision = selectedOption.dataset.comision;
+            document.getElementById('porcentaje_comision_tpp').value = comision || '';
+            // Disparamos el evento 'input' para que la función de cálculo principal se ejecute
+            document.getElementById('porcentaje_comision_tpp').dispatchEvent(new Event('input'));
+        }
+    });
     
     // Calcular comisiones con los valores iniciales al cargar la página
     calcularComision();

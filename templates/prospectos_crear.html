@@ -275,6 +275,16 @@ document.addEventListener('DOMContentLoaded', function() {
         calcularComision();
     });
     porcentajeTppInput.addEventListener('input', calcularComision);
+
+    document.getElementById('nombre_tpp').addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        if (selectedOption) {
+            const comision = selectedOption.dataset.comision;
+            document.getElementById('porcentaje_comision_tpp').value = comision || '';
+            // Disparamos el evento 'input' para que la función de cálculo principal se ejecute
+            document.getElementById('porcentaje_comision_tpp').dispatchEvent(new Event('input'));
+        }
+    });
     
     const form = document.getElementById('prospecto-form');
     form.addEventListener('submit', function(event) {
