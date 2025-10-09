@@ -351,7 +351,109 @@ def logout():
 @app.route('/', methods=['GET'])
 @login_required
 def index():
-    return render_template('index.html')
+    # --- Initialize data structures ---
+    kpis = {
+        'vencimientos_15_dias': 0,
+        'cobros_pendientes_mes': 0, 'prospectos_en_gestion': 0,
+        'produccion_mes': 0, 'remisiones_pendientes': 0
+    }
+    produccion_por_ramo_chart = {'labels': [], 'data': []}
+    prospectos_por_estado_chart = {'labels': [], 'data': []}
+    remisiones_recientes = []
+    hoy = datetime.now()
+
+    # --- 1. Vencimientos KPIs ---
+    ruta_vencimientos = app.config.get('VENCIMIENTOS_PROCESADA_FILE_PATH')
+    if ruta_vencimientos and os.path.exists(ruta_vencimientos):
+        try:
+            df_venc = pd.read_excel(ruta_vencimientos)
+            df_venc['FECHA FIN_dt'] = pd.to_datetime(df_venc['FECHA FIN'], errors='coerce')
+            df_venc.dropna(subset=['FECHA FIN_dt'], inplace=True)
+            df_venc['Dias_Para_Vencer'] = (df_venc['FECHA FIN_dt'] - hoy).dt.days
+
+            # Aplicar el mismo filtro de ventana de 100 días que en el panel de vencimientos
+            df_filtrado_venc = df_venc[df_venc['Dias_Para_Vencer'].between(-100, 100)]
+            
+            # Filtrar por pólizas que no están en estado final
+            df_venc_activas = df_filtrado_venc[~df_filtrado_venc['Estado'].astype(str).str.lower().isin(['renovado', 'no renovado'])]
+
+            # Excluir ramos especiales para alinear con el panel de vencimientos
+            ramos_a_excluir = ['CUMPLIMIENTO', 'SERIEDAD DE OFERTA']
+            df_venc_kpi = df_venc_activas[~df_venc_activas['RAMO PRINCIPAL'].isin(ramos_a_excluir)]
+
+            kpis['vencimientos_15_dias'] = len(df_venc_kpi[df_venc_kpi['Dias_Para_Vencer'].between(0, 15)])
+        except Exception as e:
+            print(f"Error al calcular KPIs de vencimientos: {e}")
+
+    # --- 2. Cobros Pendientes Mes KPI ---
+    if os.path.exists(COBROS_FILE):
+        try:
+            df_cobros = pd.read_excel(COBROS_FILE)
+            df_cobros['Fecha_Vencimiento_Cuota'] = pd.to_datetime(df_cobros['Fecha_Vencimiento_Cuota'], errors='coerce')
+            df_cobros.dropna(subset=['Fecha_Vencimiento_Cuota'], inplace=True)
+
+            # Replicar lógica de compatibilidad de panel_cobros para alinear los KPIs
+            if 'Tipo_Movimiento' not in df_cobros.columns:
+                df_cobros['Tipo_Movimiento'] = 'Cobro'
+            df_cobros['Tipo_Movimiento'].fillna('Cobro', inplace=True)
+
+            cobros_pendientes_mes = df_cobros[
+                (df_cobros['Estado'] == 'Pendiente') &
+                (df_cobros['Tipo_Movimiento'].str.contains('Cobro', case=False, na=False)) &
+                (df_cobros['Fecha_Vencimiento_Cuota'].dt.month == hoy.month) &
+                (df_cobros['Fecha_Vencimiento_Cuota'].dt.year == hoy.year)
+            ]
+            kpis['cobros_pendientes_mes'] = len(cobros_pendientes_mes)
+        except Exception as e:
+            print(f"Error al calcular KPIs de cobros: {e}")
+
+    # --- 3. Prospectos KPIs & Chart ---
+    prospectos_file_path = app.config.get('PROSPECTOS_FILE_PATH')
+    if prospectos_file_path and os.path.exists(prospectos_file_path):
+        try:
+            df_prospectos = pd.read_excel(prospectos_file_path)
+            kpis['prospectos_en_gestion'] = len(df_prospectos[df_prospectos['Estado'] == 'En gestión'])
+            
+            # Prospectos por estado chart data
+            estado_counts = df_prospectos['Estado'].value_counts()
+            prospectos_por_estado_chart['labels'] = estado_counts.index.tolist()
+            prospectos_por_estado_chart['data'] = estado_counts.values.tolist()
+        except Exception as e:
+            print(f"Error al calcular KPIs de prospectos: {e}")
+
+    # --- 4. Producción & Remisiones Recientes ---
+    if os.path.exists(EXCEL_FILE):
+        try:
+            df_remisiones = pd.read_excel(EXCEL_FILE)
+            df_remisiones['fecha_registro_dt'] = pd.to_datetime(df_remisiones['fecha_registro'], dayfirst=True, errors='coerce')
+            
+            # Producción del mes KPI y Chart
+            produccion_mes_df = df_remisiones[
+                (df_remisiones['estado'] == 'Creado') &
+                (df_remisiones['fecha_registro_dt'].dt.month == hoy.month) &
+                (df_remisiones['fecha_registro_dt'].dt.year == hoy.year)
+            ]
+            kpis['produccion_mes'] = produccion_mes_df['uib'].apply(limpiar_valor_moneda).sum()
+            
+            if not produccion_mes_df.empty:
+                ramos_data = produccion_mes_df.groupby('ramo')['uib'].sum().sort_values(ascending=False).head(10)
+                produccion_por_ramo_chart['labels'] = ramos_data.index.tolist()
+                produccion_por_ramo_chart['data'] = ramos_data.values.tolist()
+
+            # Remisiones recientes
+            remisiones_recientes_df = df_remisiones.sort_values(by='fecha_registro_dt', ascending=False).head(5)
+            remisiones_recientes = remisiones_recientes_df.to_dict(orient='records')
+
+            # KPI de Remisiones Pendientes
+            kpis['remisiones_pendientes'] = len(df_remisiones[df_remisiones['estado'] == 'Pendiente'])
+        except Exception as e:
+            print(f"Error al calcular KPIs de producción y remisiones: {e}")
+
+    return render_template('index.html', 
+                           kpis=kpis,
+                           produccion_por_ramo_chart=produccion_por_ramo_chart,
+                           prospectos_por_estado_chart=prospectos_por_estado_chart,
+                           remisiones_recientes=remisiones_recientes)
 
 @app.route('/carga_maestra', methods=['GET'])
 @login_required
