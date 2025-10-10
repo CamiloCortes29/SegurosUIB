@@ -274,16 +274,28 @@ document.addEventListener('DOMContentLoaded', function() {
         const primaNeta = parseFloat(primaNetaInput.value.replace(/\$|\.|,/g, '')) || 0;
         const porcComision = parseFloat(porcComisionInput.value) || 0;
         const porcParticipacionVendedor = parseFloat(porcParticipacionVendedorInput.value) || 0;
+        
+        const vendedorSelect = document.getElementById('vendedor');
+        const coCorretajeSelect = document.getElementById('co_corretaje_opcion');
+        const selectedVendedorName = vendedorSelect.options[vendedorSelect.selectedIndex].value;
 
         const comisionCalculada = primaNeta * (porcComision / 100);
         comisionCalculadaInput.value = '$' + Math.round(comisionCalculada).toLocaleString('es-CO');
 
         let comisionTpp = 0;
-        if (porcParticipacionVendedor > 0) {
+        // If the seller is UIB, their commission is not TPP.
+        if (selectedVendedorName === 'UIB CORREDORES DE SEGUROS S.A.') {
+            comisionTpp = 0;
+        } else if (porcParticipacionVendedor > 0) {
+            // For any other seller, calculate TPP as before.
             comisionTpp = comisionCalculada * (porcParticipacionVendedor / 100);
         }
+        
         comisionTppInput.value = '$' + Math.round(comisionTpp).toLocaleString('es-CO');
         
+        // Automatically set the co-brokerage option based on the TPP commission value.
+        coCorretajeSelect.value = comisionTpp > 0 ? 'si' : 'no';
+
         const comisionUib = comisionCalculada - comisionTpp;
         participacionUibInput.value = '$' + Math.round(comisionUib).toLocaleString('es-CO');
     }

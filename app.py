@@ -515,6 +515,10 @@ def registrar():
         for field in form_fields_to_collect:
             datos[field] = datos_formulario.get(field, '').strip()
 
+        # If co-corretaje is selected, the TPP seller is the one from the main 'vendedor' dropdown.
+        if datos.get('co_corretaje_opcion') == 'si':
+            datos['co_corretaje_nombre'] = datos.get('vendedor', '').strip()
+
         # Handle "Otro" for categorias_grupo
         if datos['categorias_grupo'] == 'Otro':
             datos['categorias_grupo'] = datos_formulario.get('categorias_grupo_otro', 'Otro').strip()
@@ -522,19 +526,21 @@ def registrar():
         # Clean numeric fields from form
         prima_neta = limpiar_valor_moneda(datos_formulario.get('prima_neta', '0'))
         porcentaje_comision = limpiar_valor_moneda(datos_formulario.get('porcentaje_comision_valor', '0'))
-        porcentaje_co_corretaje = limpiar_valor_moneda(datos_formulario.get('co_corretaje_porcentaje', '0'))
+        porcentaje_vendedor = limpiar_valor_moneda(datos_formulario.get('porcentaje_vendedor', '0'))
+        porcentaje_co_corretaje = limpiar_valor_moneda(datos_formulario.get('co_corretaje_porcentaje', '0')) # Keep for now, might be used elsewhere
 
-        # --- 2. Backend Calculations (Critical for data integrity) ---
+        # --- 2. Backend Calculations (Corrected Logic) ---
 
         # Calculate Comision$
         comision_dolar = (prima_neta * porcentaje_comision) / 100.0
 
-        # Calculate ComisionTPP
+        # Calculate ComisionTPP based on the seller's participation
         comision_tpp = 0
-        if datos.get('co_corretaje_opcion') == 'si':
-            comision_tpp = (comision_dolar * porcentaje_co_corretaje) / 100.0
+        # If the seller is UIB, their commission is not TPP.
+        if datos.get('vendedor') != 'UIB CORREDORES DE SEGUROS S.A.' and porcentaje_vendedor > 0 and datos.get('co_corretaje_opcion') == 'si':
+             comision_tpp = comision_dolar * (porcentaje_vendedor / 100.0)
 
-        # Calculate ComisionUIB (same as 'uib' field)
+        # Calculate ComisionUIB, which is the remainder
         comision_uib = comision_dolar - comision_tpp
 
         # --- 3. Populate 'datos' dictionary for saving ---
@@ -542,8 +548,10 @@ def registrar():
         # Add cleaned and calculated values to the main dictionary
         datos['prima_neta'] = prima_neta
         datos['porcentaje_comision_valor'] = porcentaje_comision
-        datos['Comision$'] = comision_dolar
+        datos['porcentaje_vendedor'] = porcentaje_vendedor
         datos['co_corretaje_porcentaje'] = porcentaje_co_corretaje
+        
+        datos['Comision$'] = comision_dolar
         datos['ComisionTPP'] = comision_tpp
         datos['ComisionUIB'] = comision_uib
         datos['uib'] = comision_uib # This is the final UIB value
@@ -1977,18 +1985,27 @@ def procesar_reporte_maestro():
 @login_required
 def recaudo():
     # Initialize all variables
-    total_renovaciones, total_prospectos, total_modificaciones, total_general, total_tpp = 0, 0, 0, 0, 0
-    renovaciones_data, prospectos_data, modificaciones_data, tpp_data = [], [], [], []
+    total_renovaciones, total_prospectos, total_modificaciones, total_general = 0, 0, 0, 0
+    renovaciones_data, prospectos_data, modificaciones_data = [], [], []
+    tpp_por_vendedor = []
     chart_data = {'labels': [], 'data': []}
 
     remisiones = cargar_remisiones()
     if remisiones:
         df = pd.DataFrame(remisiones)
 
-        required_cols = ['renovacion', 'negocio_nuevo', 'modificacion', 'estado', 'fecha_registro', 'uib', 'ramo', 'co_corretaje_opcion', 'ComisionTPP']
-        if all(col in df.columns for col in required_cols):
+        # Define all columns that will be used
+        required_cols = [
+            'renovacion', 'negocio_nuevo', 'modificacion', 'estado', 'fecha_registro', 
+            'uib', 'ramo', 'ComisionUIB', 'co_corretaje_opcion', 'ComisionTPP', 'co_corretaje_nombre'
+        ]
+        
+        # Check if all required columns exist
+        missing_cols = [col for col in required_cols if col not in df.columns]
+        if not missing_cols:
             # Clean and prepare data
             df['uib'] = df['uib'].apply(limpiar_valor_moneda)
+            df['ComisionUIB'] = df['ComisionUIB'].apply(limpiar_valor_moneda)
             df['ComisionTPP'] = df['ComisionTPP'].apply(limpiar_valor_moneda)
             df['fecha_registro_dt'] = pd.to_datetime(df['fecha_registro'], dayfirst=True, errors='coerce')
             df.dropna(subset=['fecha_registro_dt'], inplace=True)
@@ -2001,34 +2018,50 @@ def recaudo():
                 (df['fecha_registro_dt'].dt.month == hoy.month) &
                 (df['fecha_registro_dt'].dt.year == hoy.year)
             )
-            df_mes_actual = df[base_filter]
+            df_mes_actual = df[base_filter].copy()
 
-            # --- Calculations for KPI cards ---
+            # --- Calculations for KPI cards (using ComisionUIB as per user feedback) ---
             df_renovaciones = df_mes_actual[df_mes_actual['renovacion'].astype(str).str.strip().str.lower() == 'si']
-            total_renovaciones = df_renovaciones['uib'].sum()
+            total_renovaciones = df_renovaciones['ComisionUIB'].sum()
             renovaciones_data = df_renovaciones.to_dict(orient='records')
 
             df_prospectos = df_mes_actual[df_mes_actual['negocio_nuevo'].astype(str).str.strip().str.lower() == 'si']
-            total_prospectos = df_prospectos['uib'].sum()
+            total_prospectos = df_prospectos['ComisionUIB'].sum()
             prospectos_data = df_prospectos.to_dict(orient='records')
 
             df_modificaciones = df_mes_actual[df_mes_actual['modificacion'].astype(str).str.strip().str.lower() == 'si']
-            total_modificaciones = df_modificaciones['uib'].sum()
+            total_modificaciones = df_modificaciones['ComisionUIB'].sum()
             modificaciones_data = df_modificaciones.to_dict(orient='records')
-
-            df_tpp = df_mes_actual[df_mes_actual['co_corretaje_opcion'].astype(str).str.strip().str.lower() == 'si']
-            total_tpp = df_tpp['ComisionTPP'].sum()
-            tpp_data = df_tpp.to_dict(orient='records')
 
             total_general = total_renovaciones + total_prospectos + total_modificaciones
 
-            # --- Chart Data Calculation ---
+            # --- TPP per Seller Calculation (Corrected Logic) ---
+            df_tpp = df_mes_actual[df_mes_actual['co_corretaje_opcion'].astype(str).str.strip().str.lower() == 'si'].copy()
+            if not df_tpp.empty:
+                # Fill NaN values, convert to string, and strip whitespace to handle empty/null seller names correctly.
+                df_tpp['co_corretaje_nombre'] = df_tpp['co_corretaje_nombre'].fillna('').astype(str).str.strip()
+                
+                # Replace any resulting empty strings with a descriptive placeholder.
+                df_tpp.loc[df_tpp['co_corretaje_nombre'] == '', 'co_corretaje_nombre'] = 'Vendedor no especificado'
+
+                comisiones_tpp_agrupadas = df_tpp.groupby('co_corretaje_nombre')['ComisionTPP'].sum().reset_index()
+                
+                # Filter out 'UIB' and sellers with zero commission
+                comisiones_tpp_filtradas = comisiones_tpp_agrupadas[
+                    (~comisiones_tpp_agrupadas['co_corretaje_nombre'].str.lower().str.strip().eq('uib')) &
+                    (comisiones_tpp_agrupadas['ComisionTPP'] > 0)
+                ]
+                
+                comisiones_tpp_filtradas = comisiones_tpp_filtradas.rename(columns={'co_corretaje_nombre': 'vendedor', 'ComisionTPP': 'comision'})
+                tpp_por_vendedor = comisiones_tpp_filtradas.to_dict(orient='records')
+
+            # --- Chart Data Calculation (using uib which is equivalent to ComisionUIB) ---
             if not df_mes_actual.empty:
                 ramos_data = df_mes_actual.groupby('ramo')['uib'].sum().sort_values(ascending=False).head(10)
                 chart_data['labels'] = ramos_data.index.tolist()
-                chart_data['data'] = ramos_data.values.tolist()
+                chart_data['data'] = [round(x) for x in ramos_data.values]
         else:
-            flash('Faltan columnas requeridas en remisiones.xlsx para calcular el recaudo.', 'warning')
+            flash(f'Faltan columnas requeridas en remisiones.xlsx para calcular el recaudo: {", ".join(missing_cols)}.', 'warning')
 
     return render_template('recaudo.html',
                            total_renovaciones=total_renovaciones,
@@ -2038,9 +2071,8 @@ def recaudo():
                            total_modificaciones=total_modificaciones,
                            modificaciones_data=modificaciones_data,
                            total_general=total_general,
-                           total_tpp=total_tpp,
-                           tpp_data=tpp_data,
-                           chart_data=chart_data)
+                           tpp_por_vendedor=tpp_por_vendedor,
+                           produccion_por_ramo_chart=chart_data)
 
 @app.route('/visualizar_sarlaft', methods=['GET'])
 @login_required
