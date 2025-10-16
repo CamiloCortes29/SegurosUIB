@@ -81,13 +81,14 @@
                     <div class="card-header"><h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Datos de la Remisión</h5></div>
                     <div class="card-body">
                         <div class="row g-3">
-                            <div class="d-flex flex-wrap gap-2">
-                                {% if datos.get('renovacion') == 'si' %}<span class="badge fs-6 bg-success"><i class="fas fa-redo me-1"></i> Renovación</span>{% endif %}
-                                {% if datos.get('negocio_nuevo') == 'si' %}<span class="badge fs-6 bg-info"><i class="fas fa-plus-circle me-1"></i> Negocio Nuevo</span>{% endif %}
-                                {% if datos.get('renovable') == 'si' %}<span class="badge fs-6 bg-primary"><i class="fas fa-sync me-1"></i> Renovable</span>{% endif %}
-                                {% if datos.get('modificacion') == 'si' %}<span class="badge fs-6 bg-warning text-dark"><i class="fas fa-edit me-1"></i> Modificación</span>{% endif %}
-                                {% if datos.get('anexo') == 'si' %}<span class="badge fs-6 bg-secondary"><i class="fas fa-paperclip me-1"></i> Anexo</span>{% endif %}
-                            </div>                                    
+                            <div class="row mb-3">
+                                <div class="col-auto"><div class="form-check"><input class="form-check-input" type="checkbox" name="renovacion" id="renovacion" value="si" {% if datos.renovacion == 'si' %}checked{% endif %} disabled><label class="form-check-label" for="renovacion"><i class="fas fa-redo"></i> Es Renovación</label></div></div>
+                                <div class="col-auto"><div class="form-check"><input class="form-check-input" type="checkbox" name="negocio_nuevo" id="negocio_nuevo" value="si" {% if datos.negocio_nuevo == 'si' %}checked{% endif %} disabled><label class="form-check-label" for="negocio_nuevo"><i class="fas fa-plus-circle"></i> Es Negocio Nuevo</label></div></div>
+                                <div class="col-auto"><div class="form-check"><input class="form-check-input" type="checkbox" name="renovable" id="renovable" value="si" {% if datos.renovable == 'si' %}checked{% endif %} disabled><label class="form-check-label" for="renovable"><i class="fas fa-sync"></i> Es Renovable</label></div></div>
+                                <div class="col-auto"><div class="form-check"><input class="form-check-input" type="checkbox" name="modificacion" id="modificacion" value="si" {% if datos.modificacion == 'si' %}checked{% endif %} disabled><label class="form-check-label" for="modificacion"><i class="fas fa-edit"></i> Es Modificación</label></div></div>
+                                <div class="col-auto"><div class="form-check"><input class="form-check-input" type="checkbox" name="anexo_checkbox" id="anexo_checkbox" value="si" {% if datos.anexo_checkbox == 'si' %}checked{% endif %} disabled><label class="form-check-label" for="anexo_checkbox"><i class="fas fa-paperclip"></i> Es Anexo</label></div></div>
+                            </div>
+                            
                             <div class="row">
                                 <div class="col-md-4 mb-3"><label for="fecha_recepcion" class="form-label">Fecha de Recepción</label><input type="date" name="fecha_recepcion" id="fecha_recepcion" class="form-control" value="{{ datos.fecha_recepcion | default('', true) }}" readonly></div>
                                 <div class="col-md-4 mb-3"><label for="tomador" class="form-label">Tomador</label><input type="text" name="tomador" id="tomador" class="form-control" value="{{ datos.tomador | default('', true) }}" readonly></div>
@@ -114,7 +115,7 @@
 
             <fieldset class="mb-4">
                 <div class="card shadow-sm mb-4">
-                    <div class="card-header"><h5 class="mb-0"><i class="fas fa-credit-card"></i> Información de Venta y Comisiones</h5></div><br>
+                    <div class="card-header"><h5 class="mb-0"><i class="fas fa-credit-card"></i> Información de Venta y Comisiones</h5></div>
                     <div class="card-body">
                         <div class="row g-3">
                             <div class="row">
@@ -140,7 +141,7 @@
 
             <fieldset class="mb-4">
                 <div class="card shadow-sm mb-4">
-                    <div class="card-header"><h5 class="mb-0"><i class="fas fa-credit-card"></i> Información del Pago</h5></div><br>
+                    <div class="card-header"><h5 class="mb-0"><i class="fas fa-credit-card"></i> Información del Pago</h5></div>
                     <div class="card-body">
                         <div class="row g-3">
                             <div class="row">
@@ -155,7 +156,7 @@
 
             <fieldset class="mb-4">
                 <div class="card shadow-sm mb-4">
-                    <div class="card-header"><h5 class="mb-0"><i class="far fa-file-alt"></i> Observaciones</h5></div><br>
+                    <div class="card-header"><h5 class="mb-0"><i class="far fa-file-alt"></i> Observaciones</h5></div>
                     <div class="card-body">
                         <div class="row g-3">
                             <div class="col-md-6 mb-3"><label for="observaciones" class="form-label">Observaciones</label><textarea name="observaciones" id="observaciones" class="form-control" rows="3" readonly>{{ datos.observaciones | default('', true) }}</textarea></div>

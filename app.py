@@ -826,13 +826,29 @@ def editar_remision(consecutivo_id):
 
     if remision_a_editar:
         # Ensure all expected fields are present in the dictionary passed to the template
-        # This prevents errors if the record in Excel is old and missing new columns.
         campos_completos = ORDEN_COLUMNAS_EXCEL_REMISIONES
         for campo in campos_completos:
             if campo not in remision_a_editar:
-                remision_a_editar[campo] = '' # Default to empty string if missing
+                remision_a_editar[campo] = ''
 
-        return render_template('editar_remision.html', datos=remision_a_editar)
+        # Cargar las listas de opciones para los dropdowns
+        opciones_aseguradora = config_manager.get_list('aseguradoras')
+        opciones_ramo = config_manager.get_list('ramos')
+        opciones_tipo_moneda = config_manager.get_list('tipo_moneda')
+        opciones_vendedor = config_manager.get_list('vendedores')
+        opciones_forma_pago = config_manager.get_list('forma_pago')
+        opciones_periodicidad_pago = config_manager.get_list('periodicidad_pago')
+        opciones_analista = config_manager.get_list('analistas')
+
+        return render_template('editar_remision.html', 
+                               datos=remision_a_editar,
+                               opciones_aseguradora=opciones_aseguradora,
+                               opciones_ramo=opciones_ramo,
+                               opciones_tipo_moneda=opciones_tipo_moneda,
+                               opciones_vendedor=opciones_vendedor,
+                               opciones_forma_pago=opciones_forma_pago,
+                               opciones_periodicidad_pago=opciones_periodicidad_pago,
+                               opciones_analista=opciones_analista)
     else:
         return f"Error: Remisión con consecutivo {consecutivo_id} no encontrada. Verifique el número o contacte soporte.", 404
 
