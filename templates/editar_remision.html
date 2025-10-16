@@ -9,12 +9,15 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='main_layout.css') }}">
     <style>
-        .form-control[readonly] { background-color: #e9ecef; opacity: 1; }
+        .form-control[readonly], .form-select[disabled] { 
+            background-color: #e9ecef; 
+            opacity: 1; 
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+        }
         .card-header h5 { color: var(--primary-dark); }
         .highlight-card { border-color: var(--primary-color); }
-        .highlight-card .card-header { color: white; }
-        .form-group-checkbox-display { display: flex; align-items: center; gap: 10px; }
-        .form-group-checkbox-display input { flex-grow: 1; }
     </style>
 </head>
 <body>
@@ -28,8 +31,8 @@
             </a>
         </div>
         <ul class="nav flex-column">
-            <li class="nav-item"><a class="nav-link active" href="{{ url_for('formulario_remision') }}"><i class="fas fa-file-alt fa-fw"></i> Radicar Remisión</a></li>
-            <li class="nav-item"><a class="nav-link" href="{{ url_for('control') }}"><i class="fas fa-cogs fa-fw"></i> Control de remisiones </a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('formulario_remision') }}"><i class="fas fa-file-alt fa-fw"></i> Radicar Remisión</a></li>
+            <li class="nav-item"><a class="nav-link active" href="{{ url_for('control') }}"><i class="fas fa-cogs fa-fw"></i> Control de remisiones </a></li>
             <li class="nav-item"><a class="nav-link" href="{{ url_for('panel_cobros') }}"><i class="fas fa-hand-holding-usd fa-fw"></i> Control de Cobros</a></li>
             <li class="nav-item"><a class="nav-link" href="{{ url_for('visualizar_cartera') }}"><i class="fas fa-book fa-fw"></i> Cartera</a></li>
             <li class="nav-item"><a class="nav-link" href="{{ url_for('visualizar_vencimientos') }}"><i class="fas fa-calendar-times fa-fw"></i> Control de Vencimientos</a></li>
@@ -42,116 +45,156 @@
             <li class="nav-item mt-auto"><a class="nav-link" href="{{ url_for('admin.dashboard') }}"><i class="fas fa-tachometer-alt fa-fw"></i> Admin</a></li>
         </ul>
     </div>
+
     <!-- Main Content -->
     <div class="content">
-        <header class="pb-3 mb-4 border-bottom"><h1 class="h3"><i class="fas fa-edit me-2"></i>Editar Remisión</h1><p class="text-muted">Consecutivo: <strong>{{ datos.get('consecutivo', 'N/A') }}</strong></p>
-            <div class="text-end">
-                <a href="{{ url_for('control') }}" class="btn btn-secondary me-2"><i class="fas fa-arrow-left me-2"></i>Volver a Control</a>
+        <header class="pb-3 mb-4 border-bottom d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h3"><i class="fas fa-edit me-2"></i>Editar Remisión</h1>
+                <p class="text-muted">Consecutivo: <strong>{{ datos.consecutivo | default('N/A', true) }}</strong></p>
             </div>
-        
-        
+            <div class="text-end">
+                <a href="{{ url_for('control') }}" class="btn btn-secondary"><i class="fas fa-arrow-left me-2"></i> Volver a Control</a>
+            </div>
         </header>
 
-        <form method="POST" action="{{ url_for('guardar_numero_remision') }}" id="editForm">
-            <input type="hidden" name="consecutivo" value="{{ datos.get('consecutivo', '') }}">
-            
-            <div class="card shadow-sm mb-4 highlight-card"><div class="card-header"><h5 class="mb-0"><i class="fas fa-file-signature me-2"></i>Número de Remisión</h5></div><div class="card-body"><div class="row"><div class="col-md-6"><label for="numero_remision_manual" class="form-label">Número Remisión</label><input type="text" class="form-control" name="numero_remision_manual" id="numero_remision_manual" value="{{ datos.get('numero_remision_manual', '') }}" placeholder="Ingrese el número de remisión" required><div class="form-text">Este es el único campo que se puede modificar.</div></div></div></div></div>
+        <form method="POST" action="{{ url_for('guardar_numero_remision') }}" id="mainForm" class="card p-4">
+            <input type="hidden" name="consecutivo" value="{{ datos.consecutivo | default('', true) }}">
 
-            <div class="card shadow-sm mb-4"><div class="card-header"><h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Datos de la Remisión</h5></div><div class="card-body"><div class="row g-3">
-                <div class="col-md-3"><label class="form-label">Consecutivo:</label><input type="text" class="form-control" value="{{ datos.consecutivo | default('', true) }}" readonly></div>
-                <div class="col-md-3"><label class="form-label">Fecha de Registro:</label><input type="text" class="form-control" value="{{ datos.fecha_registro | default('', true) }}" readonly></div>
-                <div class="col-md-3"><label class="form-label">Estado Actual:</label><input type="text" class="form-control" value="{{ datos.estado | default('', true) }}" readonly></div>
-                <div class="col-md-3"><label class="form-label">Fecha Recepción:</label><input type="text" class="form-control" value="{{ datos.fecha_recepcion | default('', true) }}" readonly></div>
-                <div class="col-12 mt-3">
-                    <label class="form-label">Tipo de Remisión:</label>
-                    <div class="d-flex flex-wrap gap-2">
-                        {% if datos.get('renovacion') == 'si' %}<span class="badge fs-6 bg-success"><i class="fas fa-redo me-1"></i> Renovación</span>{% endif %}
-                        {% if datos.get('negocio_nuevo') == 'si' %}<span class="badge fs-6 bg-info"><i class="fas fa-plus-circle me-1"></i> Negocio Nuevo</span>{% endif %}
-                        {% if datos.get('renovable') == 'si' %}<span class="badge fs-6 bg-primary"><i class="fas fa-sync me-1"></i> Renovable</span>{% endif %}
-                        {% if datos.get('modificacion') == 'si' %}<span class="badge fs-6 bg-warning text-dark"><i class="fas fa-edit me-1"></i> Modificación</span>{% endif %}
-                        {% if datos.get('anexo') == 'si' %}<span class="badge fs-6 bg-secondary"><i class="fas fa-paperclip me-1"></i> Anexo</span>{% endif %}
+            <!-- Número de Remisión Manual -->
+            <div class="card shadow-sm mb-4 highlight-card">
+                <div class="card-header"><h5 class="mb-0"><i class="fas fa-file-signature me-2"></i>Número de Remisión</h5></div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="numero_remision_manual" class="form-label">Número Remisión</label>
+                            <input type="text" class="form-control" name="numero_remision_manual" id="numero_remision_manual" value="{{ datos.numero_remision_manual | default('', true) }}" placeholder="Ingrese el número de remisión">
+                            <div class="form-text">Este es el único campo que se puede modificar.</div>
+                        </div>
                     </div>
                 </div>
-                <div class="col-md-3"><label class="form-label">Tomador:</label><input type="text" class="form-control" value="{{ datos.tomador | default('', true) }}" readonly></div>
-                <div class="col-md-3"><label class="form-label">NIT/CC:</label><input type="text" class="form-control" value="{{ datos.nit | default('', true) }}" readonly></div>
-                <div class="col-md-3"><label class="form-label">Aseguradora:</label><input type="text" class="form-control" value="{{ datos.aseguradora | default('', true) }}" readonly></div>
-                <div class="col-md-3"><label class="form-label">Ramo:</label><input type="text" class="form-control" value="{{ datos.ramo | default('', true) }}" readonly></div>
-                <div class="col-md-3"><label class="form-label">N° Póliza:</label><input type="text" class="form-control" value="{{ datos.poliza | default('', true) }}" readonly></div>
-                <div class="col-md-3"><label class="form-label">Numero Anexo / Certificado:</label><input type="text" class="form-control" value="{{ datos.numero_anexo | default('', true) }}" readonly></div>
-                <div class="col-md-3"><label class="form-label">Fecha Inicio Vigencia:</label><input type="text" class="form-control" value="{{ datos.fecha_inicio | default('', true) }}" readonly></div>
-                <div class="col-md-3"><label class="form-label">Fecha Fin Vigencia:</label><input type="text" class="form-control" value="{{ datos.fecha_fin | default('', true) }}" readonly></div>
-                <div class="col-md-3"><label class="form-label">Fecha Límite de Pago:</label><input type="text" class="form-control" value="{{ datos.fecha_limite_pago | default('', true) }}" readonly></div>
-            </div></div></div>
+            </div>
 
-            <div class="card shadow-sm mb-4"><div class="card-header"><h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Información de Venta y Comisiones</h5></div><div class="card-body"><div class="row g-3">
-                <div class="col-md-3"><label class="form-label">Prima Neta:</label><input type="text" class="form-control" id="prima_neta_display" value="{{ datos.prima_neta | default('', true) }}" readonly></div>
-                <div class="col-md-3"><label class="form-label">% Comisión:</label><input type="text" class="form-control" id="porcentaje_comision_valor_display" value="{{ datos.porcentaje_comision_valor | default('', true) }}" readonly></div>
-                <div class="col-md-3"><label class="form-label">Comision$:</label><input type="text" class="form-control" id="comision_calculada" readonly></div>
-                <div class="col-md-3"><label class="form-label">Vendedor:</label><input type="text" class="form-control" value="{{ datos.vendedor | default('', true) }}" readonly></div>
-                <div class="col-md-3"><label class="form-label">% Participación Vendedor:</label><input type="text" class="form-control" id="porcentaje_vendedor_display" value="{{ datos.porcentaje_vendedor | default('', true) }}" readonly></div>
-                <div class="col-md-3"><label class="form-label">ComisionTPP:</label><input type="text" class="form-control" id="comision_tpp" readonly></div>
-                <div class="col-md-3"><label class="form-label">ComisionUIB:</label><input type="text" class="form-control" id="uib" readonly></div>
-            </div></div></div>
+            <!-- Datos Básicos -->
+            <fieldset class="mb-4">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header"><h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Datos de la Remisión</h5></div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="d-flex flex-wrap gap-2">
+                                {% if datos.get('renovacion') == 'si' %}<span class="badge fs-6 bg-success"><i class="fas fa-redo me-1"></i> Renovación</span>{% endif %}
+                                {% if datos.get('negocio_nuevo') == 'si' %}<span class="badge fs-6 bg-info"><i class="fas fa-plus-circle me-1"></i> Negocio Nuevo</span>{% endif %}
+                                {% if datos.get('renovable') == 'si' %}<span class="badge fs-6 bg-primary"><i class="fas fa-sync me-1"></i> Renovable</span>{% endif %}
+                                {% if datos.get('modificacion') == 'si' %}<span class="badge fs-6 bg-warning text-dark"><i class="fas fa-edit me-1"></i> Modificación</span>{% endif %}
+                                {% if datos.get('anexo') == 'si' %}<span class="badge fs-6 bg-secondary"><i class="fas fa-paperclip me-1"></i> Anexo</span>{% endif %}
+                            </div>                                    
+                            <div class="row">
+                                <div class="col-md-4 mb-3"><label for="fecha_recepcion" class="form-label">Fecha de Recepción</label><input type="date" name="fecha_recepcion" id="fecha_recepcion" class="form-control" value="{{ datos.fecha_recepcion | default('', true) }}" readonly></div>
+                                <div class="col-md-4 mb-3"><label for="tomador" class="form-label">Tomador</label><input type="text" name="tomador" id="tomador" class="form-control" value="{{ datos.tomador | default('', true) }}" readonly></div>
+                                <div class="col-md-4 mb-3"><label for="nit" class="form-label">NIT / CC</label><input type="text" name="nit" id="nit" class="form-control" value="{{ datos.nit | default('', true) }}" readonly></div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-3 mb-3"><label for="aseguradora" class="form-label">Aseguradora</label><select name="aseguradora" id="aseguradora" class="form-select" disabled><option value="">Seleccione...</option>{% for opt in opciones_aseguradora %}<option value="{{ opt }}" {% if opt == datos.aseguradora %}selected{% endif %}>{{ opt }}</option>{% endfor %}</select></div>
+                                <div class="col-md-3 mb-3"><label for="ramo" class="form-label">Ramo</label><select name="ramo" id="ramo" class="form-select" disabled><option value="">Seleccione...</option>{% for opt in opciones_ramo %}<option value="{{ opt }}" {% if opt == datos.ramo %}selected{% endif %}>{{ opt }}</option>{% endfor %}</select></div>
+                                <div class="col-md-3 mb-3"><label for="poliza" class="form-label">N° Póliza</label><input type="text" name="poliza" id="poliza" class="form-control" value="{{ datos.poliza | default('', true) }}" readonly></div>
+                                <div class="col-md-3 mb-3"><label for="anexo" class="form-label">Anexo / Certificado</label><input type="text" name="anexo" id="anexo" class="form-control" value="{{ datos.anexo | default('', true) }}" readonly></div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4 mb-3"><label for="fecha_inicio" class="form-label">Fecha Inicio Vigencia</label><input type="date" name="fecha_inicio" id="fecha_inicio" class="form-control" value="{{ datos.fecha_inicio | default('', true) }}" readonly></div>
+                                <div class="col-md-4 mb-3"><label for="fecha_fin" class="form-label">Fecha Fin Vigencia</label><input type="date" name="fecha_fin" id="fecha_fin" class="form-control" value="{{ datos.fecha_fin | default('', true) }}" readonly></div>
+                                <div class="col-md-4 mb-3"><label for="fecha_limite_pago" class="form-label">Fecha Límite de Pago</label><input type="date" name="fecha_limite_pago" id="fecha_limite_pago" class="form-control" value="{{ datos.fecha_limite_pago | default('', true) }}" readonly></div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3"><label for="analista_responsable" class="form-label">Analista Responsable</label><select name="analista_responsable" id="analista_responsable" class="form-select" disabled><option value="">Seleccione...</option>{% for opt in opciones_analista %}<option value="{{ opt }}" {% if opt == datos.analista_responsable %}selected{% endif %}>{{ opt }}</option>{% endfor %}</select></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </fieldset>
 
-            <div class="card shadow-sm mb-4"><div class="card-header"><h5 class="mb-0"><i class="fas fa-credit-card me-2"></i>Información del Pago</h5></div><div class="card-body"><div class="row g-3">
-                <div class="col-md-4"><label class="form-label">Periodicidad de Pago:</label><input type="text" class="form-control" id="periodicidad_pago_display" value="{{ datos.periodicidad_pago | default('', true) }}" readonly></div>
-                <div class="col-md-4"><label class="form-label">Forma de Pago:</label><input type="text" class="form-control" id="forma_pago_display" value="{{ datos.forma_pago | default('', true) }}" readonly></div>
-                <div class="col-md-4" id="numero_cuotas_group" style="display: none;"><label class="form-label"># de Cuotas:</label><input type="text" class="form-control" id="numero_cuotas" value="{{ datos.numero_cuotas | default('', true) }}" readonly></div>
-            </div></div></div>
-            
-            <div class="card shadow-sm mb-4"><div class="card-header"><h5 class="mb-0"><i class="far fa-file-alt me-2"></i>Observaciones</h5></div><div class="card-body"><div class="row g-3">
-                <div class="col-12"><label class="form-label">Observaciones Generales:</label><textarea class="form-control" rows="3" readonly>{{ datos.observaciones | default('', true) }}</textarea></div>
-                <div class="col-12"><label class="form-label">Riesgos Adicionales:</label><textarea class="form-control" rows="3" readonly>{{ datos.riesgos_adicionales | default('', true) }}</textarea></div>
-            </div></div></div>
+            <fieldset class="mb-4">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header"><h5 class="mb-0"><i class="fas fa-credit-card"></i> Información de Venta y Comisiones</h5></div><br>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="row">
+                                <div class="col-md-4 mb-3"><label for="tipo_moneda" class="form-label">Tipo Moneda</label><select name="tipo_moneda" id="tipo_moneda" class="form-select" disabled><option value="">Seleccione...</option>{% for opt in opciones_tipo_moneda %}<option value="{{ opt }}" {% if opt == datos.tipo_moneda %}selected{% endif %}>{{ opt }}</option>{% endfor %}</select></div>
+                                <div class="col-md-4 mb-3"><label for="prima_neta" class="form-label">Prima Neta</label><input type="text" name="prima_neta" id="prima_neta" class="form-control currency" value="{{ datos.prima_neta | default('', true) }}" readonly></div>
+                                <div class="col-md-4 mb-3"><label for="gastos_adicionales" class="form-label">Gastos Adicionales</label><input type="text" name="gastos_adicionales" id="gastos_adicionales" class="form-control currency" value="{{ datos.gastos_adicionales | default('', true) }}" readonly></div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-3 mb-3"><label for="porcentaje_comision_valor" class="form-label">% Comisión</label><input type="number" name="porcentaje_comision_valor" id="porcentaje_comision_valor" class="form-control" value="{{ datos.porcentaje_comision_valor | default('', true) }}" step="0.01" readonly></div>
+                                <div class="col-md-3 mb-3"><label for="comision_calculada" class="form-label">Comisión $</label><input type="text" name="comision_calculada" id="comision_calculada" class="form-control currency" value="{{ datos['Comision$'] | default('', true) }}" readonly></div>
+                                <div class="col-md-3 mb-3"><label for="vendedor" class="form-label">Vendedor</label><select name="vendedor" id="vendedor" class="form-select" disabled><option value="">Seleccione...</option>{% for vendedor in opciones_vendedor %}<option value="{{ vendedor.nombre }}" {% if vendedor.nombre == datos.vendedor %}selected{% endif %}>{{ vendedor.nombre }}</option>{% endfor %}</select></div>
+                                <div class="col-md-3 mb-3"><label for="porcentaje_vendedor" class="form-label">% Part. Vendedor</label><input type="number" name="porcentaje_vendedor" id="porcentaje_vendedor" class="form-control" value="{{ datos.porcentaje_vendedor | default('', true) }}" step="0.01" readonly></div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4 mb-3"><label for="comision_tpp" class="form-label">Comisión TPP</label><input type="text" name="comision_tpp" id="comision_tpp" class="form-control currency" value="{{ datos.ComisionTPP | default('', true) }}" readonly></div>
+                                <div class="col-md-4 mb-3"><label for="uib" class="form-label">Comisión UIB</label><input type="text" name="uib" id="uib" class="form-control currency" value="{{ datos.ComisionUIB | default('', true) }}" readonly></div>
+                                <div class="col-md-4 mb-3"><label for="co_corretaje_opcion" class="form-label">Aplica Co-corretaje</label><select name="co_corretaje_opcion" id="co_corretaje_opcion" class="form-select" disabled><option value="no" {% if datos.co_corretaje_opcion != 'si' %}selected{% endif %}>No</option><option value="si" {% if datos.co_corretaje_opcion == 'si' %}selected{% endif %}>Sí</option></select></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </fieldset>
 
-            <div class="d-flex justify-content-end mb-4">
-                <button type="submit" class="btn btn-primary"><i class="fas fa-save me-2"></i>Guardar Remisión</button>
+            <fieldset class="mb-4">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header"><h5 class="mb-0"><i class="fas fa-credit-card"></i> Información del Pago</h5></div><br>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="row">
+                                <div class="col-md-4 mb-3"><label for="periodicidad_pago" class="form-label">Periodicidad de Pago</label><select name="periodicidad_pago" id="periodicidad_pago" class="form-select" disabled><option value="">Seleccione...</option>{% for opt in opciones_periodicidad_pago %}<option value="{{ opt }}" {% if opt == datos.periodicidad_pago %}selected{% endif %}>{{ opt }}</option>{% endfor %}</select></div>
+                                <div class="col-md-4 mb-3"><label for="forma_pago" class="form-label">Forma de Pago</label><select name="forma_pago" id="forma_pago" class="form-select" disabled><option value="">Seleccione...</option>{% for opt in opciones_forma_pago %}<option value="{{ opt }}" {% if opt == datos.forma_pago %}selected{% endif %}>{{ opt }}</option>{% endfor %}</select></div>
+                                <div class="col-md-4 mb-3"><label for="numero_cuotas" class="form-label"># de Cuotas</label><input type="number" id="numero_cuotas" name="numero_cuotas" class="form-control" value="{{ datos.numero_cuotas | default('', true) }}" readonly></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </fieldset>
+
+            <fieldset class="mb-4">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header"><h5 class="mb-0"><i class="far fa-file-alt"></i> Observaciones</h5></div><br>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6 mb-3"><label for="observaciones" class="form-label">Observaciones</label><textarea name="observaciones" id="observaciones" class="form-control" rows="3" readonly>{{ datos.observaciones | default('', true) }}</textarea></div>
+                            <div class="col-md-6 mb-3"><label for="riesgos_adicionales" class="form-label">Riesgos Adicionales</label><textarea name="riesgos_adicionales" id="riesgos_adicionales" class="form-control" rows="3" readonly>{{ datos.riesgos_adicionales | default('', true) }}</textarea></div>
+                        </div>
+                    </div>
+                </div>
+            </fieldset>
+        
+            <div class="text-end">
+                <button type="submit" class="btn btn-primary" form="mainForm"><i class="fas fa-save"></i> Guardar Número de Remisión</button>
             </div>
         </form>
-
+        <br>
         <footer class="pt-3 mt-4 text-muted border-top">&copy; 2024 UIB Corredores de Seguros S.A.</footer>
     </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        function toggleCuotasField() {
-            const periodicidad = "{{ datos.periodicidad_pago | default('', true) }}";
-            const formaPago = "{{ datos.forma_pago | default('', true) }}";
-            const cuotasGroup = document.getElementById('numero_cuotas_group');
-            const formasPagoValidas = ['Fraccionado', 'Acuerdo de pago', 'Financiado'];
-            if (periodicidad === 'Mensual' && formasPagoValidas.includes(formaPago)) {
-                cuotasGroup.style.display = 'block';
-            } else {
-                cuotasGroup.style.display = 'none';
-            }
+document.addEventListener('DOMContentLoaded', function() {
+    // Función para formatear un valor numérico a moneda colombiana
+    function formatCurrency(value) {
+        if (isNaN(value) || value === null || value === '') {
+            return '$ 0';
         }
-        function calcularComisiones() {
-            const primaNeta = parseFloat("{{ datos.prima_neta | default('0', true) }}".replace(/\$|\./g, '')) || 0;
-            const porcComision = parseFloat("{{ datos.porcentaje_comision_valor | default('0', true) }}".replace(',', '.')) || 0;
-            const porcParticipacionVendedor = parseFloat("{{ datos.porcentaje_vendedor | default('0', true) }}".replace(',', '.')) || 0;
-            const comisionCalculadaInput = document.getElementById('comision_calculada');
-            const comisionTppInput = document.getElementById('comision_tpp');
-            const participacionUibInput = document.getElementById('uib');
-            const comisionCalculada = primaNeta * (porcComision / 100);
-            comisionCalculadaInput.value = '$' + Math.round(comisionCalculada).toLocaleString('es-CO');
-            comisionTppInput.value = '';
-            participacionUibInput.value = '';
-            if (porcParticipacionVendedor >= 100) {
-                participacionUibInput.value = '$' + Math.round(comisionCalculada).toLocaleString('es-CO');
-            } else if (porcParticipacionVendedor > 0) {
-                const comisionTpp = comisionCalculada * (porcParticipacionVendedor / 100);
-                comisionTppInput.value = '$' + Math.round(comisionTpp).toLocaleString('es-CO');
-                const comisionUib = comisionCalculada - comisionTpp;
-                participacionUibInput.value = '$' + Math.round(comisionUib).toLocaleString('es-CO');
-            } else {
-                participacionUibInput.value = '$' + Math.round(comisionCalculada).toLocaleString('es-CO');
-            }
-        }
-        toggleCuotasField();
-        calcularComisiones();
+        // Convierte el valor a número, asegurándose de que sea un float.
+        const number = parseFloat(value);
+        // Usa toLocaleString para formatear sin decimales.
+        return '$' + Math.round(number).toLocaleString('es-CO');
+    }
+
+    // Aplica el formato a todos los campos de moneda al cargar la página
+    document.querySelectorAll('.currency').forEach(input => {
+        // Obtiene el valor, lo limpia de cualquier formato no numérico por si acaso
+        let numericValue = input.value.replace(/[^0-9.,-]/g, '').replace(',', '.');
+        input.value = formatCurrency(numericValue);
     });
+});
 </script>
 </body>
 </html>

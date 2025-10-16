@@ -682,51 +682,116 @@ def registrar():
 @app.route('/control')
 @login_required
 def control():
+    # 1. Cargar todos los datos
     remisiones_data = cargar_remisiones()
-    remisiones_ordenadas = sorted(remisiones_data, key=lambda r: str(r.get('consecutivo', '')), reverse=True)
-    primeras_10_remisiones = remisiones_ordenadas[:10]
+    df = pd.DataFrame(remisiones_data)
 
-    campos_esperados = [
-        'consecutivo', 'fecha_recepcion', 'tomador', 'nit',
-        'aseguradora', 'ramo', 'poliza',
-        'fecha_inicio', 'fecha_fin', 'estado', 'numero_remision_manual',
-        'archivos',
-        'prima_neta',
-        'Comision$',
-        'ComisionTPP',
-        'ComisionUIB',
-        'uib'
-    ]
-    remisiones_list = []
-    for r in primeras_10_remisiones:
-        for campo in campos_esperados:
-            if campo not in r:
-                r[campo] = 'N/A'
-        
-        # FIX: Ensure 'archivos' is a string to prevent .split() error on float (NaN)
-        if 'archivos' in r and not isinstance(r['archivos'], str):
-            r['archivos'] = ''
+    # Manejar el caso donde no hay datos para evitar el KeyError
+    if df.empty:
+        kpis = {'total': 0, 'pendientes': 0, 'creadas': 0}
+        pagination = {'page': 1, 'per_page': 15, 'total_pages': 0, 'total_records': 0, 'has_prev': False, 'has_next': False}
+        opciones_aseguradora = sorted(config_manager.get_list('aseguradoras'))
+        opciones_ramo = sorted(config_manager.get_list('ramos'))
+        opciones_estado = ['Pendiente', 'Creado']
+        return render_template('control.html', 
+                               remisiones=[],
+                               pagination=pagination,
+                               kpis=kpis,
+                               opciones_aseguradora=opciones_aseguradora,
+                               opciones_ramo=opciones_ramo,
+                               opciones_estado=opciones_estado,
+                               filtros_activos={'aseguradora': '', 'ramo': '', 'estado': ''})
 
-        remisiones_list.append(r)
-    return render_template('control.html', remisiones=remisiones_list)
+    # Asegurar que las columnas de fecha son datetime para ordenar
+    df['fecha_registro_dt'] = pd.to_datetime(df['fecha_registro'], format='%d/%m/%Y %H:%M:%S', errors='coerce')
+    df = df.sort_values(by='fecha_registro_dt', ascending=False)
+
+    # 2. Obtener parámetros de filtro de la URL
+    aseguradora_filtro = request.args.get('aseguradora', '')
+    ramo_filtro = request.args.get('ramo', '')
+    estado_filtro = request.args.get('estado', '')
+
+    # 3. Aplicar filtros si existen
+    if aseguradora_filtro:
+        df = df[df['aseguradora'] == aseguradora_filtro]
+    if ramo_filtro:
+        df = df[df['ramo'] == ramo_filtro]
+    if estado_filtro:
+        df = df[df['estado'] == estado_filtro]
+
+    # 4. Calcular KPIs después de filtrar
+    kpis = {
+        'total': len(df),
+        'pendientes': len(df[df['estado'] == 'Pendiente']),
+        'creadas': len(df[df['estado'] == 'Creado'])
+    }
+
+    # 5. Configurar y aplicar paginación
+    page = request.args.get('page', 1, type=int)
+    per_page = 15
+    start = (page - 1) * per_page
+    end = start + per_page
+    
+    total_records = len(df)
+    total_pages = (total_records + per_page - 1) // per_page
+    
+    remisiones_paginadas = df.iloc[start:end].to_dict('records')
+
+    # 6. Preparar datos para la plantilla
+    pagination = {
+        'page': page,
+        'per_page': per_page,
+        'total_pages': total_pages,
+        'total_records': total_records,
+        'has_prev': page > 1,
+        'has_next': page < total_pages,
+    }
+
+    opciones_aseguradora = sorted(config_manager.get_list('aseguradoras'))
+    opciones_ramo = sorted(config_manager.get_list('ramos'))
+    opciones_estado = ['Pendiente', 'Creado']
+
+    return render_template('control.html', 
+                           remisiones=remisiones_paginadas,
+                           pagination=pagination,
+                           kpis=kpis,
+                           opciones_aseguradora=opciones_aseguradora,
+                           opciones_ramo=opciones_ramo,
+                           opciones_estado=opciones_estado,
+                           filtros_activos={
+                               'aseguradora': aseguradora_filtro,
+                               'ramo': ramo_filtro,
+                               'estado': estado_filtro
+                           })
 
 @app.route('/marcar_creado', methods=['POST'])
 @login_required
 def marcar_creado():
     consecutivo_a_marcar = request.form.get('consecutivo')
-    remisiones_actuales = cargar_remisiones()
-    actualizado = False
-    for remision in remisiones_actuales:
-        if remision['consecutivo'] == consecutivo_a_marcar:
-            remision['estado'] = 'Creado'
-            actualizado = True
-            break
-    if actualizado:
-        df = pd.DataFrame(remisiones_actuales)
+    df = pd.DataFrame(cargar_remisiones())
+    
+    remision_index = df[df['consecutivo'] == consecutivo_a_marcar].index
+    
+    if not remision_index.empty:
+        idx = remision_index[0]
+        numero_remision = df.loc[idx, 'numero_remision_manual']
+        
+        # Validación: El campo no debe estar vacío o ser NaN
+        if pd.isna(numero_remision) or str(numero_remision).strip() == '':
+            flash('Error: No se puede marcar como "Creado" sin un "Número Remisión Manual".', 'danger')
+            return redirect(url_for('control'))
+            
+        df.loc[idx, 'estado'] = 'Creado'
+        
         try:
             df.to_excel(EXCEL_FILE, index=False)
+            flash(f'La remisión {consecutivo_a_marcar} ha sido marcada como "Creado".', 'success')
         except Exception as e:
+            flash(f'Error al guardar los cambios: {e}', 'danger')
             print(f"Error al guardar Excel después de marcar como creado: {e}")
+    else:
+        flash('Error: No se encontró la remisión especificada.', 'danger')
+
     return redirect(url_for('control'))
 
 @app.route('/plantilla', methods=['POST'])
