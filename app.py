@@ -2252,6 +2252,13 @@ def panel_cobros():
 
             # --- DataFrames para cada categoría de filtro ---
             df_pendientes = df_raw[df_raw['Estado'] == 'Pendiente'].copy()
+            df_cobrados = df_raw[df_raw['Estado'] == 'Cobrado'].copy()
+
+            # "Cobrados Mes Actual": todos los cobrados del mes actual
+            df_cobrados_mes_actual = df_cobrados[
+                (df_cobrados['Fecha_Vencimiento_Cuota'].dt.month == hoy.month) &
+                (df_cobrados['Fecha_Vencimiento_Cuota'].dt.year == hoy.year)
+            ]
             
             # "Mensual": todos los pendientes del mes actual
             df_mensual_actual = df_pendientes[
@@ -2266,9 +2273,12 @@ def panel_cobros():
             df_pasados = df_pendientes[df_pendientes['Fecha_Vencimiento_Cuota'] < primer_dia_mes_actual]
 
             # --- Lógica para KPIs ---
+            kpis['Cobrado Mes Actual'] = len(df_cobrados_mes_actual)
             kpis['Mensual'] = len(df_mensual_actual)
-            kpis['Trimestral'] = len(df_futuro[df_futuro['Periodicidad'] == 'Trimestral'].drop_duplicates(subset=['Tomador', 'N_Poliza']))
-            kpis['Anual'] = len(df_futuro[df_futuro['Periodicidad'] == 'Anual'].drop_duplicates(subset=['Tomador', 'N_Poliza']))
+            # Para Trimestral y Anual, consideramos todos los pendientes desde el inicio del mes actual en adelante.
+            df_pendientes_futuros_del_mes = df_pendientes[df_pendientes['Fecha_Vencimiento_Cuota'] >= primer_dia_mes_actual]
+            kpis['Trimestral'] = len(df_pendientes_futuros_del_mes[df_pendientes_futuros_del_mes['Periodicidad'] == 'Trimestral'].drop_duplicates(subset=['Tomador', 'N_Poliza']))
+            kpis['Anual'] = len(df_pendientes_futuros_del_mes[df_pendientes_futuros_del_mes['Periodicidad'] == 'Anual'].drop_duplicates(subset=['Tomador', 'N_Poliza']))
             kpis['Pendientes Mes Anterior'] = len(df_pasados)
 
             # --- Lógica para selección de tabla y paginación ---
@@ -2276,13 +2286,16 @@ def panel_cobros():
             page = request.args.get(f'page_{section_name_prefix}', 1, type=int)
             per_page = 15
 
-            if periodicidad_seleccionada == 'Mensual':
+            if periodicidad_seleccionada == 'Cobrado Mes Actual':
+                registros_filtrados_df = df_cobrados_mes_actual
+            elif periodicidad_seleccionada == 'Mensual':
                 registros_filtrados_df = df_mensual_actual
             elif periodicidad_seleccionada == 'Pendientes Mes Anterior':
                 registros_filtrados_df = df_pasados
             else: # Trimestral, Anual, etc.
-                df_futuro_filtrado = df_futuro[df_futuro['Periodicidad'] == periodicidad_seleccionada]
-                registros_filtrados_df = df_futuro_filtrado.sort_values('Fecha_Vencimiento_Cuota').drop_duplicates(subset=['Tomador', 'N_Poliza'], keep='first')
+                # La lógica de la tabla debe coincidir con la del KPI
+                df_pendientes_futuros_filtrado = df_pendientes_futuros_del_mes[df_pendientes_futuros_del_mes['Periodicidad'] == periodicidad_seleccionada]
+                registros_filtrados_df = df_pendientes_futuros_filtrado.sort_values('Fecha_Vencimiento_Cuota').drop_duplicates(subset=['Tomador', 'N_Poliza'], keep='first')
 
             total_registros = len(registros_filtrados_df)
             total_pages = (total_registros + per_page - 1) // per_page if per_page > 0 else 0
