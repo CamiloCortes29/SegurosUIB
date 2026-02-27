@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Script para procesar vigencias y facturación por grupo.
+Script para consolidar vigencias y facturación para tabla dinámica.
 """
 
 from pathlib import Path
@@ -8,91 +8,80 @@ import argparse
 import pandas as pd
 import numpy as np
 
-def fmt_money(x, include_space=True):
-    try:
-        if pd.isna(x) or x == "": return ""
-        val = f"{int(round(float(x), 0)):,}".replace(",", ".")
-        return f"$ {val}" if include_space else f"${val}"
-    except: return ""
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", required=True)
     parser.add_argument("--sheet", default=0)
-    parser.add_argument("--output", default="resultado_vigencias.xlsx")
+    parser.add_argument("--output", default="resumen_pivot.xlsx")
     parser.add_argument("--col-asegurado", default="Asegurado")
+    parser.add_argument("--col-ramo", default="Ramo")
     parser.add_argument("--col-notacob", default="NotaCob")
     parser.add_argument("--col-anexo", default="Anexo NC")
     parser.add_argument("--col-fv", default="Fecha FV")
     parser.add_argument("--col-subtotal", default="Subtotal COP")
-    parser.add_argument("--col-tipomvto", default=None)
+    parser.add_argument("--col-tipomvto", default="Tipo Mvto")
     args = parser.parse_args()
 
     if not Path(args.input).exists(): return
 
     df = pd.read_excel(args.input, sheet_name=args.sheet, engine="openpyxl")
-    COL_ASEG, COL_NOTA, COL_ANEX = args.col_asegurado, args.col_notacob, args.col_anexo
-    COL_FV, COL_SUB, COL_MVTO = args.col_fv, args.col_subtotal, args.col_tipomvto
 
-    df["_ASEG_N"]  = df[COL_ASEG].astype(str).str.strip().str.upper()
-    df["_NOTA_N"]  = df[COL_NOTA].astype(str).str.strip().str.upper()
-    # Anexo NC se mantiene para visualización pero se elimina de la clave de agrupación
-    df["_FV_DT"] = pd.to_datetime(df[COL_FV], dayfirst=True, errors="coerce").dt.floor("D")
-    df["_SUB_VAL"] = pd.to_numeric(df[COL_SUB], errors="coerce").fillna(0)
+    COL_ASEG, COL_RAMO, COL_NOTA = args.col_asegurado, args.col_ramo, args.col_notacob
+    COL_ANEX, COL_FV, COL_SUB, COL_MVTO = args.col_anexo, args.col_fv, args.col_subtotal, args.col_tipomvto
 
-    # Agrupación simplificada: Solo Asegurado y NotaCob
-    grp_keys = ["_ASEG_N", "_NOTA_N"]
+    df[COL_FV] = pd.to_datetime(df[COL_FV], dayfirst=True, errors="coerce").dt.floor("D")
+    df[COL_SUB] = pd.to_numeric(df[COL_SUB], errors="coerce").fillna(0)
 
-    # 1. Cálculos de base
-    df["_TARGET_DATE_GLOBAL"] = df.groupby(grp_keys)["_FV_DT"].transform(lambda s: s[s.dt.year == 2026].min())
+    consol_cols = [COL_NOTA, COL_ANEX, COL_MVTO, COL_ASEG, COL_RAMO, COL_FV]
+    df_consol = df.groupby(consol_cols, dropna=False)[COL_SUB].sum().reset_index()
 
-    df["_FV_PREV_GLOBAL"] = df.groupby(grp_keys)["_FV_DT"].transform(
-        lambda s: s[s < df.loc[s.index, "_TARGET_DATE_GLOBAL"]].max()
-    )
+    df_2026 = df_consol[df_consol[COL_FV].dt.year == 2026].copy()
+    df_others = df_consol[df_consol[COL_FV].dt.year < 2026].copy()
 
-    df["_mask_prev"] = (df["_FV_DT"] == df["_FV_PREV_GLOBAL"]) & pd.notna(df["_FV_DT"])
-    df["_sum_prev_total"] = df.groupby(grp_keys + ["_FV_PREV_GLOBAL"], dropna=False)["_SUB_VAL"].transform(lambda x: x[df.loc[x.index, "_mask_prev"]].sum())
+    results = []
+    for idx, row in df_2026.iterrows():
+        mask = (df_others[COL_ASEG] == row[COL_ASEG]) & (df_others[COL_RAMO] == row[COL_RAMO])
+        potential_prev = df_others[mask]
 
-    df["_mask_2026"] = (df["_FV_DT"].dt.year == 2026)
-    df["_sum_2026_total"] = df.groupby(grp_keys)["_SUB_VAL"].transform(lambda x: x[df.loc[x.index, "_mask_2026"]].sum())
+        if not potential_prev.empty:
+            prev_row = potential_prev.loc[potential_prev[COL_FV].idxmax()]
+            results.append({
+                "Nombre Asegurado": row[COL_ASEG],
+                "Fv Actual": row[COL_FV],
+                "Tipo Mvto Actual": row[COL_MVTO],
+                "Monto Actual": row[COL_SUB],
+                "Fv Anterior": prev_row[COL_FV],
+                "Tipo Mvto Anterior": prev_row[COL_MVTO],
+                "Monto Anterior": prev_row[COL_SUB]
+            })
+        else:
+            results.append({
+                "Nombre Asegurado": row[COL_ASEG],
+                "Fv Actual": row[COL_FV],
+                "Tipo Mvto Actual": row[COL_MVTO],
+                "Monto Actual": row[COL_SUB],
+                "Fv Anterior": pd.NaT,
+                "Tipo Mvto Anterior": "",
+                "Monto Anterior": 0
+            })
 
-    # 2. Visibilidad según imagen
-    df["Fecha 2026 (objetivo)"] = pd.NaT
-    df.loc[df["_mask_2026"], "Fecha 2026 (objetivo)"] = df["_TARGET_DATE_GLOBAL"]
+    df_res = pd.DataFrame(results)
+    if df_res.empty: return
 
-    # Fila donde se muestran los resúmenes (Primera fila de 2026 del grupo)
-    df["_is_first_2026_row"] = df["_mask_2026"] & ~df.duplicated(subset=grp_keys + ["_mask_2026"])
+    # Formatear para Excel
+    output_path = Path(args.output)
 
-    df["FV anterior a 2026 (fecha)"] = pd.NaT
-    df.loc[df["_is_first_2026_row"], "FV anterior a 2026 (fecha)"] = df["_FV_PREV_GLOBAL"]
+    # Usar ExcelWriter para aplicar formatos de número y fecha si fuera necesario,
+    # pero aquí nos enfocamos en el orden y nombres de columnas de la imagen.
+    column_order = ["Nombre Asegurado", "Fv Actual", "Tipo Mvto Actual", "Monto Actual", "Fv Anterior", "Tipo Mvto Anterior", "Monto Anterior"]
+    df_res = df_res[column_order]
 
-    df["Suma por FV (anterior)"] = ""
-    df.loc[df["_is_first_2026_row"], "Suma por FV (anterior)"] = df.loc[df["_is_first_2026_row"], "_sum_prev_total"].apply(lambda x: fmt_money(x, include_space=True))
+    # Renombrar para que coincida exactamente con la imagen si es necesario
+    # Imagen muestra: Nombre Asegurado | Fv Actual | Tipo Mvto | Fv Anterior | Tipo Mvto
+    # Y los montos debajo de Fv Actual y Fv Anterior. Esto sugiere una estructura de pivot o
+    # simplemente columnas alineadas. El usuario pide "Tabla dinámica".
 
-    df["Suma FV 2026"] = np.nan
-    df.loc[df["_is_first_2026_row"], "Suma FV 2026"] = df.loc[df["_is_first_2026_row"], "_sum_2026_total"].round(0)
-
-    # 3. Columnas de Display
-    def build_prev_display(row):
-        if not row["_is_first_2026_row"] or pd.isna(row["_FV_PREV_GLOBAL"]) or pd.isna(row["_sum_prev_total"]): return ""
-        return f"{row['_FV_PREV_GLOBAL'].strftime('%d/%m/%Y')} - {fmt_money(row['_sum_prev_total'], include_space=False)}"
-
-    def build_2026_display(row):
-        if not row["_is_first_2026_row"] or pd.isna(row["_TARGET_DATE_GLOBAL"]) or pd.isna(row["_sum_2026_total"]): return ""
-        return f"{row['_TARGET_DATE_GLOBAL'].strftime('%d/%m/%Y')} — {fmt_money(row['_sum_2026_total'], include_space=True)}"
-
-    df["Fecha FV Anterior (mostrar)"] = df.apply(build_prev_display, axis=1)
-    df["FV 2026 (mostrar)"] = df.apply(build_2026_display, axis=1)
-
-    # 4. Exportar
-    display_cols = ["Fecha 2026 (objetivo)", "FV anterior a 2026 (fecha)", "Suma por FV (anterior)", "Suma FV 2026", "Fecha FV Anterior (mostrar)", "FV 2026 (mostrar)"]
-    df_final = df[[c for c in df.columns if not c.startswith("_") and c not in display_cols] + display_cols]
-
-    if "Suma FV 2026" in df_final.columns:
-        df_final["Suma FV 2026"] = df_final["Suma FV 2026"].astype(object)
-        df_final.loc[df_final["Suma FV 2026"].notna(), "Suma FV 2026"] = df_final.loc[df_final["Suma FV 2026"].notna(), "Suma FV 2026"].astype(int)
-
-    df_final.to_excel(args.output, index=False)
-    print("✅ Proceso completado exitosamente.")
+    df_res.to_excel(output_path, index=False)
+    print(f"✅ Archivo consolidado generado: {output_path.resolve()}")
 
 if __name__ == "__main__": main()
