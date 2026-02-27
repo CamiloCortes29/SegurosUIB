@@ -9,10 +9,10 @@ import pandas as pd
 import numpy as np
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--input", required=True)
-    parser.add_argument("--sheet", default=0)
-    parser.add_argument("--output", default="resumen_pivot.xlsx")
+    parser = argparse.ArgumentParser(description="Consolidar vigencias y facturación por grupo.")
+    parser.add_argument("--input", required=True, help="Ruta al archivo Excel de entrada")
+    parser.add_argument("--sheet", default="0", help="Nombre de la hoja o índice (0=primera)")
+    parser.add_argument("--output", default="resumen_pivot.xlsx", help="Ruta del Excel de salida")
     parser.add_argument("--col-asegurado", default="Asegurado")
     parser.add_argument("--col-ramo", default="Ramo")
     parser.add_argument("--col-notacob", default="NotaCob")
@@ -22,24 +22,51 @@ def main():
     parser.add_argument("--col-tipomvto", default="Tipo Mvto")
     args = parser.parse_args()
 
-    if not Path(args.input).exists(): return
+    input_path = Path(args.input)
+    if not input_path.exists():
+        print(f"❌ Error: No existe el archivo de entrada: {input_path}")
+        return
 
-    df = pd.read_excel(args.input, sheet_name=args.sheet, engine="openpyxl")
+    # Intentar convertir sheet a entero si es un número
+    sheet_val = args.sheet
+    try:
+        if str(sheet_val).isdigit():
+            sheet_val = int(sheet_val)
+    except:
+        pass
 
-    COL_ASEG, COL_RAMO, COL_NOTA = args.col_asegurado, args.col_ramo, args.col_notacob
-    COL_ANEX, COL_FV, COL_SUB, COL_MVTO = args.col_anexo, args.col_fv, args.col_subtotal, args.col_tipomvto
+    print(f"📥 Leyendo: {input_path} (hoja={sheet_val})")
+    df = pd.read_excel(input_path, sheet_name=sheet_val, engine="openpyxl")
 
+    COL_ASEG = args.col_asegurado
+    COL_RAMO = args.col_ramo
+    COL_NOTA = args.col_notacob
+    COL_ANEX = args.col_anexo
+    COL_FV = args.col_fv
+    COL_SUB = args.col_subtotal
+    COL_MVTO = args.col_tipomvto
+
+    # 1. Normalización y Consolidación
     df[COL_FV] = pd.to_datetime(df[COL_FV], dayfirst=True, errors="coerce").dt.floor("D")
     df[COL_SUB] = pd.to_numeric(df[COL_SUB], errors="coerce").fillna(0)
 
+    # Agrupar para consolidar registros
     consol_cols = [COL_NOTA, COL_ANEX, COL_MVTO, COL_ASEG, COL_RAMO, COL_FV]
+    # Asegurar que todas las columnas existen
+    missing = [c for c in consol_cols + [COL_SUB] if c not in df.columns]
+    if missing:
+        print(f"❌ Error: Faltan columnas en el archivo: {missing}")
+        return
+
     df_consol = df.groupby(consol_cols, dropna=False)[COL_SUB].sum().reset_index()
 
+    # 2. Separar Actual (2026) y Potenciales Anteriores
     df_2026 = df_consol[df_consol[COL_FV].dt.year == 2026].copy()
     df_others = df_consol[df_consol[COL_FV].dt.year < 2026].copy()
 
     results = []
     for idx, row in df_2026.iterrows():
+        # Búsqueda por Asegurado y Ramo
         mask = (df_others[COL_ASEG] == row[COL_ASEG]) & (df_others[COL_RAMO] == row[COL_RAMO])
         potential_prev = df_others[mask]
 
@@ -66,22 +93,17 @@ def main():
             })
 
     df_res = pd.DataFrame(results)
-    if df_res.empty: return
+    if df_res.empty:
+        print("⚠️ No se generaron registros de resumen (posiblemente no hay datos de 2026).")
+        return
 
-    # Formatear para Excel
+    # 3. Exportar
     output_path = Path(args.output)
-
-    # Usar ExcelWriter para aplicar formatos de número y fecha si fuera necesario,
-    # pero aquí nos enfocamos en el orden y nombres de columnas de la imagen.
     column_order = ["Nombre Asegurado", "Fv Actual", "Tipo Mvto Actual", "Monto Actual", "Fv Anterior", "Tipo Mvto Anterior", "Monto Anterior"]
     df_res = df_res[column_order]
 
-    # Renombrar para que coincida exactamente con la imagen si es necesario
-    # Imagen muestra: Nombre Asegurado | Fv Actual | Tipo Mvto | Fv Anterior | Tipo Mvto
-    # Y los montos debajo de Fv Actual y Fv Anterior. Esto sugiere una estructura de pivot o
-    # simplemente columnas alineadas. El usuario pide "Tabla dinámica".
-
     df_res.to_excel(output_path, index=False)
-    print(f"✅ Archivo consolidado generado: {output_path.resolve()}")
+    print(f"✅ Proceso completado. Archivo generado: {output_path.resolve()}")
 
-if __name__ == "__main__": main()
+if __name__ == "__main__":
+    main()
