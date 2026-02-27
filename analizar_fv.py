@@ -36,10 +36,12 @@ def main():
 
     df["_ASEG_N"]  = df[COL_ASEG].astype(str).str.strip().str.upper()
     df["_NOTA_N"]  = df[COL_NOTA].astype(str).str.strip().str.upper()
-    df["_ANEXO_N"] = df[COL_ANEX].astype(str).fillna("").str.strip()
+    # Anexo NC se mantiene para visualización pero se elimina de la clave de agrupación
     df["_FV_DT"] = pd.to_datetime(df[COL_FV], dayfirst=True, errors="coerce").dt.floor("D")
     df["_SUB_VAL"] = pd.to_numeric(df[COL_SUB], errors="coerce").fillna(0)
-    grp_keys = ["_ASEG_N", "_NOTA_N", "_ANEXO_N"]
+
+    # Agrupación simplificada: Solo Asegurado y NotaCob
+    grp_keys = ["_ASEG_N", "_NOTA_N"]
 
     # 1. Cálculos de base
     df["_TARGET_DATE_GLOBAL"] = df.groupby(grp_keys)["_FV_DT"].transform(lambda s: s[s.dt.year == 2026].min())
@@ -86,7 +88,6 @@ def main():
     display_cols = ["Fecha 2026 (objetivo)", "FV anterior a 2026 (fecha)", "Suma por FV (anterior)", "Suma FV 2026", "Fecha FV Anterior (mostrar)", "FV 2026 (mostrar)"]
     df_final = df[[c for c in df.columns if not c.startswith("_") and c not in display_cols] + display_cols]
 
-    # Ensure Suma FV 2026 is exported without decimals where possible
     if "Suma FV 2026" in df_final.columns:
         df_final["Suma FV 2026"] = df_final["Suma FV 2026"].astype(object)
         df_final.loc[df_final["Suma FV 2026"].notna(), "Suma FV 2026"] = df_final.loc[df_final["Suma FV 2026"].notna(), "Suma FV 2026"].astype(int)
