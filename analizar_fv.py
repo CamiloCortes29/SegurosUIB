@@ -28,17 +28,17 @@ def fmt_money(x):
 
 def main():
     parser = argparse.ArgumentParser(description="Calcular FV 2026 y FV anterior por grupo.")
-    parser.add_argument("--input", required=True)
-    parser.add_argument("--sheet", default=0)
-    parser.add_argument("--output", default="salida_con_fv.xlsx")
+    parser.add_argument("--input", required=True, help=r"Ruta al archivo Excel de entrada")
+    parser.add_argument("--sheet", default=0, help="Nombre de la hoja o índice (0=primera)")
+    parser.add_argument("--output", default="salida_con_fv.xlsx", help="Ruta del Excel de salida (.xlsx)")
 
     # Permitir personalizar nombres de columnas si difieren
-    parser.add_argument("--col-asegurado", default="Asegurado")
-    parser.add_argument("--col-notacob", default="NotaCob")
-    parser.add_argument("--col-anexo", default="Anexo NC")
-    parser.add_argument("--col-fv", default="Fecha FV")
-    parser.add_argument("--col-subtotal", default="Subtotal COP")
-    parser.add_argument("--col-tipomvto", default=None)
+    parser.add_argument("--col-asegurado", default="Asegurado", help="Columna de Asegurado")
+    parser.add_argument("--col-notacob", default="NotaCob", help="Columna de NotaCob")
+    parser.add_argument("--col-anexo", default="Anexo NC", help="Columna de Anexo NC")
+    parser.add_argument("--col-fv", default="Fecha FV", help="Columna de Fecha FV")
+    parser.add_argument("--col-subtotal", default="Subtotal COP", help="Columna de Subtotal COP")
+    parser.add_argument("--col-tipomvto", default=None, help="(Opcional) Tipo Mvto para mostrar en display")
 
     args = parser.parse_args()
 
@@ -96,23 +96,19 @@ def main():
     df["FV anterior a 2026 (fecha)"] = df.groupby(grp, group_keys=False).apply(get_prev_max)
 
     # ----- 3) Suma por FV (anterior) -----
-    # Suma de subtotal donde la fecha es igual a la fecha anterior
     df["_is_prev"] = df["_FV"] == df["FV anterior a 2026 (fecha)"]
     df["Suma por FV (anterior)"] = df.groupby(grp + ["FV anterior a 2026 (fecha)"], dropna=False)["_SUB"].transform(
         lambda x: x[df.loc[x.index, "_is_prev"]].sum()
     )
-    # Solo mostrar en la primera fila de (grupo + fecha anterior) y si la fecha existe
     mask_prev_valid = pd.notna(df["FV anterior a 2026 (fecha)"])
     is_first_prev = ~df.duplicated(subset=grp + ["FV anterior a 2026 (fecha)"])
     df.loc[~(mask_prev_valid & is_first_prev), "Suma por FV (anterior)"] = np.nan
 
     # ----- 4) Suma FV 2026 -----
-    # Suma de subtotal de todas las líneas del 2026 del grupo
     df["_is_2026"] = df["_FV"].dt.year == 2026
     df["Suma FV 2026"] = df.groupby(grp)["_SUB"].transform(
         lambda x: x[df.loc[x.index, "_is_2026"]].sum()
     )
-    # Solo mostrar en la primera fila de (grupo + Fecha 2026 objetivo) y si existe
     mask_2026_valid = pd.notna(df["Fecha 2026 (objetivo)"])
     is_first_2026 = ~df.duplicated(subset=grp + ["Fecha 2026 (objetivo)"])
     df.loc[~(mask_2026_valid & is_first_2026), "Suma FV 2026"] = np.nan
