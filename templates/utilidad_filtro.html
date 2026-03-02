@@ -3,57 +3,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Filtro de Vigencias y Facturación</title>
-    <!-- SheetJS para manejar Excel en el cliente -->
+    <title>Herramienta de Filtrado de Vigencias</title>
+    <!-- Librerías Externas (CDN) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         :root {
-            --primary-color: #2c3e50;
-            --secondary-color: #34495e;
-            --accent-color: #3498db;
-            --success-color: #27ae60;
-            --bg-color: #f4f7f6;
-            --card-bg: #ffffff;
-            --text-color: #333;
+            --primary: #1a2a6c;
+            --secondary: #b21f1f;
+            --accent: #fdbb2d;
+            --bg: #f8f9fa;
+            --white: #ffffff;
+            --text: #2d3436;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
             margin: 0;
             padding: 20px;
+            line-height: 1.6;
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1300px;
             margin: 0 auto;
         }
 
-        header {
+        .header {
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
             text-align: center;
             margin-bottom: 30px;
-        }
-
-        h1 {
-            color: var(--primary-color);
-            font-weight: 300;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
 
         .card {
-            background: var(--card-bg);
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            background: var(--white);
+            border-radius: 12px;
             padding: 25px;
-            margin-bottom: 20px;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
         }
 
-        .grid-filters {
+        .drop-zone {
+            border: 3px dashed #cbd5e0;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .drop-zone:hover, .drop-zone.active {
+            border-color: var(--primary);
+            background-color: #ebf4ff;
+        }
+
+        .filters-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 20px;
-            align-items: end;
         }
 
         .form-group {
@@ -62,116 +75,116 @@
         }
 
         label {
-            font-weight: bold;
+            font-weight: 600;
             margin-bottom: 8px;
+            color: var(--primary);
             font-size: 0.9rem;
-            color: var(--secondary-color);
         }
 
-        input, select {
-            padding: 10px;
+        select, input {
+            padding: 12px;
             border: 1px solid #ddd;
-            border-radius: 4px;
+            border-radius: 8px;
             font-size: 1rem;
+            outline: none;
         }
+
+        select:focus { border-color: var(--primary); }
 
         .btn {
-            padding: 10px 20px;
+            padding: 12px 25px;
             border: none;
-            border-radius: 4px;
-            cursor: pointer;
+            border-radius: 8px;
             font-weight: bold;
-            transition: all 0.3s;
+            cursor: pointer;
+            transition: transform 0.2s, opacity 0.2s;
             display: inline-flex;
             align-items: center;
+            gap: 10px;
             justify-content: center;
-            gap: 8px;
         }
 
-        .btn-primary { background-color: var(--accent-color); color: white; }
-        .btn-primary:hover { background-color: #2980b9; }
-        .btn-success { background-color: var(--success-color); color: white; margin-top: 15px; }
-        .btn-success:hover { background-color: #219150; }
+        .btn:active { transform: scale(0.98); }
 
-        .file-input-wrapper {
-            border: 2px dashed #ddd;
-            padding: 20px;
-            text-align: center;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: border-color 0.3s;
-        }
+        .btn-filter { background: var(--primary); color: white; }
+        .btn-download { background: #27ae60; color: white; }
+        .btn-reset { background: #95a5a6; color: white; }
 
-        .file-input-wrapper:hover {
-            border-color: var(--accent-color);
-        }
-
-        #fileInput { display: none; }
-
-        .table-container {
+        .table-wrapper {
             overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid #eee;
             margin-top: 20px;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 0.85rem;
+            font-size: 0.9rem;
         }
 
         th {
-            background-color: var(--primary-color);
-            color: white;
+            background-color: #f1f3f5;
+            padding: 15px;
             text-align: left;
-            padding: 12px;
-            position: sticky;
-            top: 0;
+            border-bottom: 2px solid #dee2e6;
+            color: var(--primary);
         }
 
         td {
-            padding: 10px;
+            padding: 12px 15px;
             border-bottom: 1px solid #eee;
         }
 
-        tr:hover { background-color: #f9f9f9; }
+        tr:hover { background-color: #f8f9fa; }
+
+        .badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            background: #e2e8f0;
+        }
 
         .hidden { display: none; }
 
-        .stats {
-            margin-top: 10px;
-            font-style: italic;
-            color: #666;
+        #statusMessage {
+            margin-top: 15px;
+            font-weight: 600;
         }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <header>
-        <h1><i class="fas fa-filter"></i> Filtro de Vigencias Consolidado</h1>
-        <p>Carga el archivo <code>resumen_pivot.xlsx</code> para filtrar por Área y Fecha</p>
-    </header>
-
-    <div class="card">
-        <div class="file-input-wrapper" onclick="document.getElementById('fileInput').click()">
-            <i class="fas fa-cloud-upload-alt fa-3x" style="color: var(--accent-color); margin-bottom: 10px;"></i>
-            <p id="fileStatus">Haz clic aquí para cargar el archivo Excel</p>
-            <input type="file" id="fileInput" accept=".xlsx, .xls">
-        </div>
+    <div class="header">
+        <h1><i class="fas fa-file-invoice-dollar"></i> Filtro Maestro de Vigencias</h1>
+        <p>Procesamiento 100% local y seguro en tu navegador</p>
     </div>
 
-    <div id="filterSection" class="card hidden">
-        <div class="grid-filters">
+    <!-- Sección de Carga -->
+    <div class="card">
+        <div class="drop-zone" id="dropZone">
+            <i class="fas fa-cloud-upload-alt fa-3x" style="color: var(--primary)"></i>
+            <p id="filePrompt">Arrastra el archivo Excel aquí o haz clic para seleccionarlo</p>
+            <input type="file" id="fileInput" accept=".xlsx, .xls" class="hidden">
+        </div>
+        <div id="statusMessage"></div>
+    </div>
+
+    <!-- Sección de Filtros -->
+    <div id="filterCard" class="card hidden">
+        <div class="filters-grid">
             <div class="form-group">
-                <label for="filterYear">Año de FV Actual</label>
-                <select id="filterYear">
-                    <option value="">Todos</option>
+                <label>Año de FV Actual</label>
+                <select id="selYear">
+                    <option value="">Cargando...</option>
                 </select>
             </div>
             <div class="form-group">
-                <label for="filterMonth">Mes de FV Actual</label>
-                <select id="filterMonth">
-                    <option value="">Todos</option>
+                <label>Mes de FV Actual</label>
+                <select id="selMonth">
+                    <option value="">Cualquier mes</option>
                     <option value="0">Enero</option>
                     <option value="1">Febrero</option>
                     <option value="2">Marzo</option>
@@ -187,28 +200,36 @@
                 </select>
             </div>
             <div class="form-group">
-                <label for="filterArea">Área</label>
-                <select id="filterArea">
-                    <option value="">Todas</option>
+                <label>Área</label>
+                <select id="selArea">
+                    <option value="">Todas las áreas</option>
                 </select>
             </div>
-            <div class="form-group">
-                <button id="btnFilter" class="btn btn-primary"><i class="fas fa-search"></i> Filtrar</button>
+            <div class="form-group" style="flex-direction: row; gap: 10px;">
+                <button onclick="applyFilters()" class="btn btn-filter" style="flex: 2">
+                    <i class="fas fa-search"></i> Aplicar
+                </button>
+                <button onclick="resetFilters()" class="btn btn-reset" style="flex: 1">
+                    <i class="fas fa-sync"></i>
+                </button>
             </div>
         </div>
-        <div id="stats" class="stats"></div>
     </div>
 
-    <div id="resultsSection" class="card hidden">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h2 style="margin: 0; font-size: 1.2rem;">Vista Previa de Resultados</h2>
-            <button id="btnDownload" class="btn btn-success"><i class="fas fa-file-excel"></i> Descargar Excel Filtrado</button>
+    <!-- Sección de Resultados -->
+    <div id="resultCard" class="card hidden">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <div>
+                <h3 style="margin:0">Vista Previa</h3>
+                <span id="rowCount" class="badge">0 registros encontrados</span>
+            </div>
+            <button onclick="downloadExcel()" class="btn btn-download">
+                <i class="fas fa-file-export"></i> Exportar a Excel
+            </button>
         </div>
-        <div class="table-container">
-            <table id="resultsTable">
-                <thead>
-                    <tr id="tableHeader"></tr>
-                </thead>
+        <div class="table-wrapper">
+            <table id="dataTable">
+                <thead><tr id="tableHead"></tr></thead>
                 <tbody id="tableBody"></tbody>
             </table>
         </div>
@@ -216,125 +237,170 @@
 </div>
 
 <script>
-    let originalData = [];
-    let filteredData = [];
+    let rawData = [];
+    let processedData = [];
 
-    // --- Manejo de Carga de Archivo ---
-    document.getElementById('fileInput').addEventListener('change', function(e) {
-        const file = e.target.files[0];
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+
+    // --- Gestión de Eventos de Carga ---
+    dropZone.onclick = () => fileInput.click();
+    fileInput.onchange = (e) => handleFile(e.target.files[0]);
+
+    dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('active'); };
+    dropZone.ondragleave = () => dropZone.classList.remove('active');
+    dropZone.ondrop = (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('active');
+        handleFile(e.dataTransfer.files[0]);
+    };
+
+    function handleFile(file) {
         if (!file) return;
 
-        document.getElementById('fileStatus').innerText = `Procesando: ${file.name}...`;
+        const messageDiv = document.getElementById('statusMessage');
+        messageDiv.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Leyendo "${file.name}"...`;
 
         const reader = new FileReader();
         reader.onload = function(e) {
             try {
                 const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, {type: 'array', cellDates: true});
-                const firstSheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[firstSheetName];
+                const workbook = XLSX.read(data, {type: 'array', cellDates: true, cellNF: false, cellText: false});
+                const sheetName = workbook.SheetNames[0];
+                const sheet = workbook.Sheets[sheetName];
 
-                originalData = XLSX.utils.sheet_to_json(worksheet);
+                // Convertir a JSON con manejo de fechas
+                rawData = XLSX.utils.sheet_to_json(sheet, {defval: ""});
 
-                if (originalData.length === 0) {
-                    alert('El archivo está vacío o no tiene el formato correcto.');
-                    return;
-                }
+                if (rawData.length === 0) throw new Error("El archivo no tiene datos.");
 
-                initFilters();
-                document.getElementById('filterSection').classList.remove('hidden');
-                document.getElementById('fileStatus').innerHTML = `<i class="fas fa-check-circle" style="color: var(--success-color)"></i> Archivo cargado correctamente: <strong>${file.name}</strong>`;
+                messageDiv.innerHTML = `<i class="fas fa-check-circle" style="color:green"></i> ${file.name} cargado (${rawData.length} filas)`;
+
+                initApp();
             } catch (err) {
-                console.error(err);
-                alert('Error al leer el archivo Excel. Asegúrate de que sea un archivo .xlsx válido.');
+                messageDiv.innerHTML = `<i class="fas fa-exclamation-triangle" style="color:red"></i> Error: ${err.message}`;
             }
         };
         reader.readAsArrayBuffer(file);
-    });
+    }
 
-    // --- Inicialización de Filtros Dinámicos ---
-    function initFilters() {
+    // --- Inicialización ---
+    function initApp() {
+        populateSelectors();
+        document.getElementById('filterCard').classList.remove('hidden');
+        document.getElementById('resultCard').classList.remove('hidden');
+        applyFilters(); // Mostrar todo al inicio
+    }
+
+    function populateSelectors() {
         const years = new Set();
         const areas = new Set();
 
-        originalData.forEach(row => {
-            // Extraer años de Fv Actual
-            const date = row['Fv Actual'];
-            if (date instanceof Date) {
-                years.add(date.getFullYear());
-            }
-            // Extraer áreas
-            if (row['Area']) areas.add(row['Area']);
+        rawData.forEach(row => {
+            // Detección flexible de la columna de fecha
+            const dateVal = findDateValue(row);
+            if (dateVal) years.add(dateVal.getFullYear());
+
+            // Detección flexible de la columna de área
+            const areaVal = findValue(row, ['Area', 'AREA', 'Área']);
+            if (areaVal) areas.add(areaVal.toString().trim());
         });
 
-        // Poblar select de años
-        const yearSelect = document.getElementById('filterYear');
-        yearSelect.innerHTML = '<option value="">Todos</option>';
-        Array.from(years).sort((a, b) => b - a).forEach(year => {
-            yearSelect.innerHTML += `<option value="${year}">${year}</option>`;
+        const selYear = document.getElementById('selYear');
+        selYear.innerHTML = '<option value="">Todos los años</option>';
+        Array.from(years).sort((a,b) => b-a).forEach(y => {
+            selYear.innerHTML += `<option value="${y}">${y}</option>`;
         });
 
-        // Poblar select de áreas
-        const areaSelect = document.getElementById('filterArea');
-        areaSelect.innerHTML = '<option value="">Todas</option>';
-        Array.from(areas).sort().forEach(area => {
-            areaSelect.innerHTML += `<option value="${area}">${area}</option>`;
+        const selArea = document.getElementById('selArea');
+        selArea.innerHTML = '<option value="">Todas las áreas</option>';
+        Array.from(areas).sort().forEach(a => {
+            selArea.innerHTML += `<option value="${a}">${a}</option>`;
         });
     }
 
-    // --- Lógica de Filtrado ---
-    document.getElementById('btnFilter').addEventListener('click', applyFilters);
+    // --- Utilidades de búsqueda en objeto ---
+    function findDateValue(row) {
+        // Buscar en columnas comunes de fecha
+        const keys = ['Fv Actual', 'FV Actual', 'Fecha FV', 'FECHA FV'];
+        for (let k of keys) {
+            let val = row[k];
+            if (val instanceof Date) return val;
+            if (typeof val === 'string' && !isNaN(Date.parse(val))) return new Date(val);
+        }
+        return null;
+    }
 
+    function findValue(row, possibleKeys) {
+        for (let k of possibleKeys) {
+            if (row[k] !== undefined && row[k] !== "") return row[k];
+        }
+        return null;
+    }
+
+    // --- Lógica de Filtro ---
     function applyFilters() {
-        const year = document.getElementById('filterYear').value;
-        const month = document.getElementById('filterMonth').value;
-        const area = document.getElementById('filterArea').value;
+        const targetYear = document.getElementById('selYear').value;
+        const targetMonth = document.getElementById('selMonth').value;
+        const targetArea = document.getElementById('selArea').value;
 
-        filteredData = originalData.filter(row => {
-            const date = row['Fv Actual'];
+        processedData = rawData.filter(row => {
+            const dateVal = findDateValue(row);
+            const areaVal = findValue(row, ['Area', 'AREA', 'Área']) || "";
+
             let matchDate = true;
-
-            if (date instanceof Date) {
-                if (year && date.getFullYear().toString() !== year) matchDate = false;
-                if (month && date.getMonth().toString() !== month) matchDate = false;
-            } else {
-                if (year || month) matchDate = false; // Si hay filtro de fecha pero no hay fecha en la fila
+            if (targetYear || targetMonth !== "") {
+                if (!dateVal) {
+                    matchDate = false;
+                } else {
+                    if (targetYear && dateVal.getFullYear().toString() !== targetYear) matchDate = false;
+                    if (targetMonth !== "" && dateVal.getMonth().toString() !== targetMonth) matchDate = false;
+                }
             }
 
-            const matchArea = !area || row['Area'] === area;
+            let matchArea = true;
+            if (targetArea && areaVal.toString().trim() !== targetArea) matchArea = false;
 
             return matchDate && matchArea;
         });
 
         renderTable();
-        document.getElementById('resultsSection').classList.remove('hidden');
-        document.getElementById('stats').innerText = `Se encontraron ${filteredData.length} registros.`;
     }
 
-    // --- Renderizado de Tabla ---
+    function resetFilters() {
+        document.getElementById('selYear').value = "";
+        document.getElementById('selMonth').value = "";
+        document.getElementById('selArea').value = "";
+        applyFilters();
+    }
+
+    // --- Renderizado ---
     function renderTable() {
-        const headerRow = document.getElementById('tableHeader');
-        const tableBody = document.getElementById('tableBody');
+        const head = document.getElementById('tableHead');
+        const body = document.getElementById('tableBody');
+        const count = document.getElementById('rowCount');
 
-        headerRow.innerHTML = '';
-        tableBody.innerHTML = '';
+        head.innerHTML = "";
+        body.innerHTML = "";
+        count.innerText = `${processedData.length} registros encontrados`;
 
-        if (filteredData.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="100%" style="text-align:center">No hay datos que coincidan con los filtros.</td></tr>';
+        if (processedData.length === 0) {
+            body.innerHTML = `<tr><td colspan="10" style="text-align:center">No se encontraron resultados para los filtros seleccionados</td></tr>`;
             return;
         }
 
-        // Crear cabeceras
-        const columns = Object.keys(filteredData[0]);
+        // Columnas a mostrar (las que existan en el primer objeto)
+        const columns = Object.keys(processedData[0]).filter(k => !k.startsWith('__'));
+
         columns.forEach(col => {
             const th = document.createElement('th');
             th.innerText = col;
-            headerRow.appendChild(th);
+            head.appendChild(th);
         });
 
-        // Crear filas (limitar a 50 para rendimiento en vista previa)
-        const previewData = filteredData.slice(0, 50);
-        previewData.forEach(row => {
+        // Limitar vista previa a 30 filas por rendimiento
+        const preview = processedData.slice(0, 30);
+        preview.forEach(row => {
             const tr = document.createElement('tr');
             columns.forEach(col => {
                 const td = document.createElement('td');
@@ -342,34 +408,35 @@
                 if (val instanceof Date) {
                     td.innerText = val.toLocaleDateString();
                 } else if (typeof val === 'number') {
-                    td.innerText = val.toLocaleString();
+                    // Formatear montos si parecen serlo
+                    td.innerText = col.toLowerCase().includes('monto') || col.toLowerCase().includes('subtotal')
+                        ? '$ ' + val.toLocaleString()
+                        : val.toString();
                 } else {
-                    td.innerText = val || '';
+                    td.innerText = val;
                 }
                 tr.appendChild(td);
             });
-            tableBody.appendChild(tr);
+            body.appendChild(tr);
         });
 
-        if (filteredData.length > 50) {
+        if (processedData.length > 30) {
             const infoTr = document.createElement('tr');
-            infoTr.innerHTML = `<td colspan="${columns.length}" style="text-align:center; color:#666; font-style:italic">Mostrando solo los primeros 50 registros...</td>`;
-            tableBody.appendChild(infoTr);
+            infoTr.innerHTML = `<td colspan="${columns.length}" style="text-align:center; color:#666; font-style:italic">Mostrando primeras 30 filas de ${processedData.length}. El archivo exportado tendrá todo.</td>`;
+            body.appendChild(infoTr);
         }
     }
 
-    // --- Descarga de Resultados ---
-    document.getElementById('btnDownload').addEventListener('click', function() {
-        if (filteredData.length === 0) return;
+    // --- Exportación ---
+    function downloadExcel() {
+        if (processedData.length === 0) return;
 
-        const worksheet = XLSX.utils.json_to_sheet(filteredData);
+        const worksheet = XLSX.utils.json_to_sheet(processedData);
         const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Filtrado");
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Resultados");
 
-        // Formatear nombre de archivo
-        const fileName = `Resumen_Filtrado_${new Date().getTime()}.xlsx`;
-        XLSX.writeFile(workbook, fileName);
-    });
+        XLSX.writeFile(workbook, `Filtro_Vigencias_${new Date().toISOString().slice(0,10)}.xlsx`);
+    }
 </script>
 
 </body>
