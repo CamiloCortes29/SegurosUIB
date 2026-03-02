@@ -2333,6 +2333,11 @@ def panel_cobros():
                            pagos_data=pagos_data,
                            opciones_periodicidad=opciones_periodicidad)
 
+@app.route('/utilidad_filtro', methods=['GET'])
+@login_required
+def utilidad_filtro():
+    return render_template('utilidad_filtro.html')
+
 @app.route('/marcar_cobrado/<id_cobro>', methods=['POST'])
 @login_required
 def marcar_cobrado(id_cobro):
