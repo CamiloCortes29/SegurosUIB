@@ -7,10 +7,19 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        :root { --primary: #003366; --secondary: #c0392b; --bg: #f5f6fa; --text: #2f3640; }
+        :root {
+            --primary: #005faa;
+            --secondary: #04a0d9;
+            --accent: #f57e21;
+            --success: #84c44c;
+            --danger: #de2a2b;
+            --dark: #23496d;
+            --bg: #f5f6fa;
+            --text: #2f3640;
+        }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 20px; }
         .container { max-width: 1300px; margin: 0 auto; }
-        .header { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; padding: 40px; border-radius: 15px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-bottom: 30px; }
+        .header { background: linear-gradient(135deg, var(--primary), var(--dark)); color: white; padding: 40px; border-radius: 15px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-bottom: 30px; }
         .card { background: white; border-radius: 12px; padding: 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 25px; }
         .drop-zone { border: 3px dashed #dcdde1; border-radius: 12px; padding: 50px; text-align: center; cursor: pointer; transition: 0.3s; }
         .drop-zone:hover { border-color: var(--primary); background: #f1f2f6; }
@@ -20,13 +29,13 @@
         select, input { padding: 12px; border: 1px solid #dcdde1; border-radius: 8px; font-size: 1rem; }
         .btn { padding: 12px 25px; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.3s; }
         .btn-process { background: var(--primary); color: white; }
-        .btn-download { background: #27ae60; color: white; }
+        .btn-download { background: var(--success); color: white; }
         .table-wrapper { overflow-x: auto; margin-top: 25px; border-radius: 8px; border: 1px solid #eee; }
         table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
         th { background: #f8f9fa; padding: 15px; text-align: left; color: var(--primary); border-bottom: 2px solid #eee; }
         td { padding: 12px 15px; border-bottom: 1px solid #f1f2f6; }
         .hidden { display: none; }
-        .badge { background: #e1b12c; color: white; padding: 4px 10px; border-radius: 15px; font-size: 0.75rem; }
+        .badge { background: var(--accent); color: white; padding: 4px 10px; border-radius: 15px; font-size: 0.75rem; }
     </style>
 </head>
 <body>
@@ -123,24 +132,56 @@
     }
 
     function runConsolidationLogic(data) {
-        // 1. Normalizar y Consolidar Registros (Como en Python)
+        if (!data || data.length === 0) return;
+
+        // Intentar detectar nombres de columnas (insensible a mayúsculas/minúsculas)
+        const first = data[0];
+        const findCol = (prefs) => {
+            for (let p of prefs) {
+                const found = Object.keys(first).find(k => k.toLowerCase() === p.toLowerCase());
+                if (found) return found;
+            }
+            return prefs[0];
+        };
+
+        const COL_FV = findCol(['Fecha FV', 'FV Actual', 'FV']);
+        const COL_ASEG = findCol(['Asegurado', 'Nombre Asegurado', 'Cliente']);
+        const COL_RAMO = findCol(['Ramo', 'Ramo Principal']);
+        const COL_SUB = findCol(['Subtotal COP', 'Monto', 'Prima Neta']);
+        const COL_NOTA = findCol(['NotaCob', 'Nota']);
+        const COL_MVTO = findCol(['Tipo Mvto', 'Movimiento']);
+        const COL_AREA = findCol(['Area', 'Área']);
+        const COL_TIPO_NEG = findCol(['Tipo Negocio']);
+
+        // 1. Normalizar y Consolidar Registros
         const consolidatedMap = new Map();
 
         data.forEach(row => {
-            const fv = row['Fecha FV'] instanceof Date ? row['Fecha FV'] : new Date(row['Fecha FV']);
+            const fvVal = row[COL_FV];
+            const fv = fvVal instanceof Date ? fvVal : new Date(fvVal);
             if (isNaN(fv.getTime())) return;
             fv.setHours(0,0,0,0);
 
+            // Se eliminó Anexo NC de la clave para evitar fragmentación
             const key = [
-                row['NotaCob'], row['Anexo NC'], row['Tipo Mvto'],
-                row['Asegurado'], row['Ramo'], row['Area'], row['Tipo Negocio'],
+                row[COL_NOTA], row[COL_MVTO],
+                row[COL_ASEG], row[COL_RAMO], row[COL_AREA], row[COL_TIPO_NEG],
                 fv.getTime()
             ].join('|');
 
             if (!consolidatedMap.has(key)) {
-                consolidatedMap.set(key, { ...row, '_fv_date': fv, '_subtotal': 0 });
+                consolidatedMap.set(key, {
+                    ...row,
+                    '_fv_date': fv,
+                    '_subtotal': 0,
+                    '_aseg': row[COL_ASEG],
+                    '_ramo': row[COL_RAMO],
+                    '_area': row[COL_AREA],
+                    '_tipo_neg': row[COL_TIPO_NEG],
+                    '_mvto': row[COL_MVTO]
+                });
             }
-            consolidatedMap.get(key)._subtotal += parseFloat(row['Subtotal COP'] || 0);
+            consolidatedMap.get(key)._subtotal += parseFloat(row[COL_SUB] || 0);
         });
 
         const consolArray = Array.from(consolidatedMap.values());
@@ -151,21 +192,21 @@
         pivotData = data2026.map(row => {
             // Buscar máxima fecha anterior para el mismo Asegurado y Ramo
             const matches = dataOthers.filter(o =>
-                o['Asegurado'] === row['Asegurado'] && o['Ramo'] === row['Ramo']
+                o._aseg === row._aseg && o._ramo === row._ramo
             ).sort((a,b) => b._fv_date - a._fv_date);
 
             const prev = matches[0] || null;
 
             return {
-                "Nombre Asegurado": row['Asegurado'],
-                "Ramo": row['Ramo'],
-                "Tipo Negocio": row['Tipo Negocio'],
-                "Area": row['Area'],
+                "Nombre Asegurado": row._aseg,
+                "Ramo": row._ramo,
+                "Tipo Negocio": row._tipo_neg,
+                "Area": row._area,
                 "Fv Actual": row._fv_date,
-                "Tipo Mvto Actual": row['Tipo Mvto'],
+                "Tipo Mvto Actual": row._mvto,
                 "Monto Actual": row._subtotal,
                 "Fv Anterior": prev ? prev._fv_date : null,
-                "Tipo Mvto Anterior": prev ? prev['Tipo Mvto'] : "",
+                "Tipo Mvto Anterior": prev ? prev._mvto : "",
                 "Monto Anterior": prev ? prev._subtotal : 0
             };
         });
@@ -229,7 +270,30 @@
     }
 
     function exportResult() {
-        const ws = XLSX.utils.json_to_sheet(filteredData);
+        // Formatear fechas para Excel y asegurar que no tengan hora
+        const dataToExport = filteredData.map(row => {
+            const newRow = { ...row };
+            // Asegurarse que las fechas sean objetos Date de JS (ya lo son, pero por si acaso)
+            // SheetJS manejará el formato si le pasamos cellDates: true al escribir o configuramos la celda
+            return newRow;
+        });
+
+        const ws = XLSX.utils.json_to_sheet(dataToExport);
+
+        // Aplicar formato de fecha a las columnas correspondientes
+        const range = XLSX.utils.decode_range(ws['!ref']);
+        for (let R = range.s.r; R <= range.e.r; ++R) {
+            for (let C = range.s.c; C <= range.e.c; ++C) {
+                const cell_address = { c: C, r: R };
+                const cell_ref = XLSX.utils.encode_cell(cell_address);
+                const cell = ws[cell_ref];
+
+                if (cell && cell.t === 'd') {
+                    cell.z = 'dd/mm/yyyy'; // Formato de fecha sin hora
+                }
+            }
+        }
+
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Resumen");
         XLSX.writeFile(wb, `Resumen_Pivot_Filtrado_${new Date().getTime()}.xlsx`);
