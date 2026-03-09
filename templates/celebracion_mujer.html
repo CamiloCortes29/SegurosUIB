@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Celebración Día de la Mujer - UIB</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-blue: #005faa;
+            --accent-pink: #ff69b4;
+            --soft-pink: #ffe4e1;
+            --gold: #d4af37;
+        }
+
+        body, html {
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+            background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+            font-family: 'Playfair Display', serif;
+        }
+
+        #sky {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            cursor: pointer;
+        }
+
+        /* Plane Styling */
+        #plane-container {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            z-index: 10;
+            transition: transform 0.1s linear;
+        }
+
+        .paper-plane {
+            width: 60px;
+            height: 60px;
+            fill: var(--primary-blue);
+            filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.2));
+        }
+
+        /* Bouquet Styling */
+        #bouquet {
+            position: absolute;
+            display: none;
+            width: 300px;
+            height: 300px;
+            transform: translate(-50%, -50%);
+            z-index: 20;
+        }
+
+        .flower {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            opacity: 0;
+        }
+
+        @keyframes bloom {
+            0% { transform: translate(-50%, -50%) scale(0) rotate(0deg); opacity: 0; }
+            100% { transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) scale(1) rotate(var(--r)); opacity: 1; }
+        }
+
+        .blooming {
+            animation: bloom 1.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        /* Message Styling */
+        #message-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            display: none;
+            z-index: 30;
+            pointer-events: none;
+        }
+
+        .celebration-text {
+            font-family: 'Dancing Script', cursive;
+            font-size: 5rem;
+            color: var(--accent-pink);
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1), 0 0 20px rgba(255, 105, 180, 0.3);
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        @keyframes fadeInUp {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .show-message {
+            animation: fadeInUp 2s ease-out forwards 1s;
+        }
+
+        .back-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            background-color: var(--primary-blue);
+            color: white;
+            border-radius: 50px;
+            padding: 10px 20px;
+            text-decoration: none;
+            transition: all 0.3s;
+            font-family: sans-serif;
+            font-weight: bold;
+        }
+
+        .back-btn:hover {
+            background-color: #004a85;
+            color: white;
+            transform: scale(1.05);
+        }
+
+        /* Confetti Effect */
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #f00;
+            opacity: 0;
+        }
+
+        @keyframes confetti-fall {
+            0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <a href="{{ url_for('index') }}" class="back-btn">
+        <i class="fas fa-arrow-left me-2"></i> Volver al Dashboard
+    </a>
+
+    <div id="sky">
+        <div id="plane-container">
+            <svg class="paper-plane" viewBox="0 0 24 24">
+                <path d="M2,21L23,12L2,3V10L17,12L2,14V21Z" />
+            </svg>
+        </div>
+
+        <div id="bouquet">
+            <!-- Flowers will be injected here via JS -->
+        </div>
+
+        <div id="message-container">
+            <h1 class="celebration-text">Feliz Día de la Mujer</h1>
+        </div>
+    </div>
+
+    <script>
+        const sky = document.getElementById('sky');
+        const planeContainer = document.getElementById('plane-container');
+        const bouquet = document.getElementById('bouquet');
+        const messageContainer = document.getElementById('message-container');
+        const messageText = document.querySelector('.celebration-text');
+
+        let posX = -100;
+        let posY = Math.random() * window.innerHeight;
+        let angle = 0;
+        let speed = 3;
+        let isStopped = false;
+
+        // Plane Movement
+        function animatePlane() {
+            if (isStopped) return;
+
+            // Add some "realistic" wave motion
+            posX += speed;
+            posY += Math.sin(posX * 0.02) * 2;
+
+            // Subtle rotation based on vertical movement
+            angle = Math.sin(posX * 0.02) * 15;
+
+            planeContainer.style.left = posX + 'px';
+            planeContainer.style.top = posY + 'px';
+            planeContainer.style.transform = `rotate(${angle}deg)`;
+
+            // Loop back
+            if (posX > window.innerWidth + 100) {
+                posX = -100;
+                posY = Math.random() * window.innerHeight;
+            }
+
+            requestAnimationFrame(animatePlane);
+        }
+
+        animatePlane();
+
+        // Interaction
+        sky.addEventListener('click', (e) => {
+            if (isStopped) return;
+            isStopped = true;
+
+            const rect = planeContainer.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+
+            // Hide plane
+            planeContainer.style.display = 'none';
+
+            // Show bouquet at plane's position
+            bouquet.style.display = 'block';
+            bouquet.style.left = centerX + 'px';
+            bouquet.style.top = centerY + 'px';
+
+            createBouquet();
+
+            // Show message
+            messageContainer.style.display = 'block';
+            messageText.classList.add('show-message');
+
+            createConfetti();
+        });
+
+        function createBouquet() {
+            const flowerColors = ['#ff69b4', '#ff1493', '#ffc0cb', '#da70d6', '#ba55d3', '#ffffff', '#ffd700'];
+            const flowerCount = 30;
+
+            for (let i = 0; i < flowerCount; i++) {
+                const flower = document.createElement('div');
+                flower.className = 'flower';
+
+                // Randomize position in the bouquet
+                const angle = Math.random() * Math.PI * 2;
+                const radius = Math.random() * 130;
+                const x = Math.cos(angle) * radius;
+                const y = Math.sin(angle) * radius;
+                const r = Math.random() * 360;
+
+                flower.style.setProperty('--x', x + 'px');
+                flower.style.setProperty('--y', y + 'px');
+                flower.style.setProperty('--r', r + 'deg');
+
+                const color = flowerColors[Math.floor(Math.random() * flowerColors.length)];
+                const type = Math.floor(Math.random() * 3); // 3 types of flowers
+
+                let flowerSVG = '';
+                if (type === 0) {
+                    // Classic Daisy style
+                    flowerSVG = `
+                        <svg width="45" height="45" viewBox="0 0 100 100">
+                            <circle cx="50" cy="50" r="15" fill="#ffd700" />
+                            ${[0, 45, 90, 135, 180, 225, 270, 315].map(rot =>
+                                `<path d="M50,0 Q60,25 50,50 Q40,25 50,0" fill="${color}" transform="rotate(${rot} 50 50)" />`
+                            ).join('')}
+                        </svg>
+                    `;
+                } else if (type === 1) {
+                    // Rounded petal style
+                    flowerSVG = `
+                        <svg width="40" height="40" viewBox="0 0 100 100">
+                            <circle cx="50" cy="50" r="12" fill="#ffd700" />
+                            ${[0, 60, 120, 180, 240, 300].map(rot =>
+                                `<circle cx="50" cy="25" r="20" fill="${color}" transform="rotate(${rot} 50 50)" opacity="0.8" />`
+                            ).join('')}
+                        </svg>
+                    `;
+                } else {
+                    // Tulip style
+                    flowerSVG = `
+                        <svg width="35" height="35" viewBox="0 0 100 100">
+                            <path d="M50,100 Q20,80 20,50 Q20,20 50,40 Q80,20 80,50 Q80,80 50,100" fill="${color}" />
+                            <path d="M50,100 Q35,70 35,40 Q50,10 65,40 Q65,70 50,100" fill="${color}" filter="brightness(0.9)" />
+                        </svg>
+                    `;
+                }
+
+                flower.innerHTML = flowerSVG;
+                bouquet.appendChild(flower);
+
+                // Trigger animation with a small delay for each flower
+                setTimeout(() => {
+                    flower.classList.add('blooming');
+                }, i * 50);
+            }
+        }
+
+        function createConfetti() {
+            const colors = ['#ff69b4', '#ff1493', '#ffd700', '#005faa', '#84c44c'];
+            for (let i = 0; i < 100; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = Math.random() * 100 + 'vw';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.width = Math.random() * 10 + 5 + 'px';
+                confetti.style.height = confetti.style.width;
+                confetti.style.animation = `confetti-fall ${Math.random() * 3 + 2}s linear forwards`;
+                confetti.style.animationDelay = Math.random() * 2 + 's';
+                document.body.appendChild(confetti);
+            }
+        }
+    </script>
+</body>
+</html>
