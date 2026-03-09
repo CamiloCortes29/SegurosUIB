@@ -82,6 +82,11 @@
                     <i class="fas fa-paper-plane fa-fw"></i> Celebración Mujer
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link text-accent-gold" href="{{ url_for('cumpleanos') }}">
+                    <i class="fas fa-birthday-cake fa-fw"></i> Cumpleaños Madrid
+                </a>
+            </li>
             <li class="nav-item mt-auto">
                 <a class="nav-link" href="{{ url_for('admin.dashboard') }}">
                     <i class="fas fa-tachometer-alt fa-fw"></i> Admin
@@ -112,6 +117,13 @@
             .text-accent-pink:hover {
                 color: #ff1493 !important;
                 background-color: rgba(255, 105, 180, 0.1);
+            }
+            .text-accent-gold {
+                color: #ffd700 !important;
+            }
+            .text-accent-gold:hover {
+                color: #ffc107 !important;
+                background-color: rgba(255, 215, 0, 0.1);
             }
         </style>
 
