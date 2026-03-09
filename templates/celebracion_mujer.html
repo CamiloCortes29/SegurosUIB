@@ -27,16 +27,19 @@
             position: relative;
             width: 100vw;
             height: 100vh;
-            cursor: pointer;
         }
 
         /* Plane Styling */
-        #plane-container {
+        .plane-wrapper {
             position: absolute;
             width: 100px;
             height: 100px;
             z-index: 10;
-            transition: transform 0.1s linear;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
         }
 
         .paper-plane {
@@ -44,6 +47,29 @@
             height: 60px;
             fill: var(--primary-blue);
             filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.2));
+            transition: transform 0.3s;
+        }
+
+        .plane-label {
+            font-family: 'Dancing Script', cursive;
+            font-weight: bold;
+            font-size: 1.5rem;
+            color: var(--primary-blue);
+            margin-top: -10px;
+            pointer-events: none;
+            user-select: none;
+            background: rgba(255,255,255,0.7);
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
+        .plane-wrapper:hover .paper-plane {
+            transform: scale(1.1);
+            fill: var(--accent-pink);
+        }
+
+        .plane-wrapper:hover .plane-label {
+            color: var(--accent-pink);
         }
 
         /* Bouquet Styling */
@@ -83,44 +109,38 @@
             display: none;
             z-index: 30;
             pointer-events: none;
+            width: 90%;
         }
 
         .celebration-text {
             font-family: 'Dancing Script', cursive;
-            font-size: 5rem;
+            font-size: 4rem;
             color: var(--accent-pink);
             text-shadow: 2px 2px 4px rgba(0,0,0,0.1), 0 0 20px rgba(255, 105, 180, 0.3);
             opacity: 0;
             transform: translateY(20px);
+            line-height: 1.2;
+        }
+
+        .celebration-subtext {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.8rem;
+            color: var(--primary-blue);
+            opacity: 0;
+            transform: translateY(20px);
+            margin-top: 20px;
         }
 
         @keyframes fadeInUp {
             to { opacity: 1; transform: translateY(0); }
         }
 
-        .show-message {
-            animation: fadeInUp 2s ease-out forwards 1s;
+        .show-message .celebration-text {
+            animation: fadeInUp 2s ease-out forwards 0.5s;
         }
 
-        .back-btn {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            z-index: 100;
-            background-color: var(--primary-blue);
-            color: white;
-            border-radius: 50px;
-            padding: 10px 20px;
-            text-decoration: none;
-            transition: all 0.3s;
-            font-family: sans-serif;
-            font-weight: bold;
-        }
-
-        .back-btn:hover {
-            background-color: #004a85;
-            color: white;
-            transform: scale(1.05);
+        .show-message .celebration-subtext {
+            animation: fadeInUp 2s ease-out forwards 1.5s;
         }
 
         /* Confetti Effect */
@@ -130,6 +150,7 @@
             height: 10px;
             background-color: #f00;
             opacity: 0;
+            z-index: 5;
         }
 
         @keyframes confetti-fall {
@@ -140,116 +161,152 @@
 </head>
 <body>
 
-    <a href="{{ url_for('index') }}" class="back-btn">
-        <i class="fas fa-arrow-left me-2"></i> Volver al Dashboard
-    </a>
-
     <div id="sky">
-        <div id="plane-container">
-            <svg class="paper-plane" viewBox="0 0 24 24">
-                <path d="M2,21L23,12L2,3V10L17,12L2,14V21Z" />
-            </svg>
-        </div>
-
         <div id="bouquet">
             <!-- Flowers will be injected here via JS -->
         </div>
 
         <div id="message-container">
-            <h1 class="celebration-text">Feliz Día de la Mujer</h1>
+            <h1 class="celebration-text">Feliz Dia de la mujer a la mujer mas hermosa de mi vida</h1>
+            <p class="celebration-subtext">Te amo mucho mi vida<br>Naz</p>
         </div>
     </div>
 
     <script>
         const sky = document.getElementById('sky');
-        const planeContainer = document.getElementById('plane-container');
         const bouquet = document.getElementById('bouquet');
         const messageContainer = document.getElementById('message-container');
-        const messageText = document.querySelector('.celebration-text');
 
-        let posX = -100;
-        let posY = Math.random() * window.innerHeight;
-        let angle = 0;
-        let speed = 3;
-        let isStopped = false;
+        let siClicks = 0;
+        let isFinished = false;
+        const planes = [];
 
-        // Plane Movement
-        function animatePlane() {
-            if (isStopped) return;
+        class Plane {
+            constructor(type) {
+                this.type = type; // 'Si' or 'No'
+                this.posX = -150 - (Math.random() * 500);
+                this.posY = Math.random() * (window.innerHeight - 100);
+                this.speed = 2 + Math.random() * 3;
+                this.phase = Math.random() * Math.PI * 2;
 
-            // Add some "realistic" wave motion
-            posX += speed;
-            posY += Math.sin(posX * 0.02) * 2;
+                this.element = document.createElement('div');
+                this.element.className = 'plane-wrapper';
+                this.element.innerHTML = `
+                    <svg class="paper-plane" viewBox="0 0 24 24">
+                        <path d="M2,21L23,12L2,3V10L17,12L2,14V21Z" />
+                    </svg>
+                    <div class="plane-label label-${this.type}">${this.type}</div>
+                `;
 
-            // Subtle rotation based on vertical movement
-            angle = Math.sin(posX * 0.02) * 15;
-
-            planeContainer.style.left = posX + 'px';
-            planeContainer.style.top = posY + 'px';
-            planeContainer.style.transform = `rotate(${angle}deg)`;
-
-            // Loop back
-            if (posX > window.innerWidth + 100) {
-                posX = -100;
-                posY = Math.random() * window.innerHeight;
+                this.element.addEventListener('click', (e) => this.handleClick(e));
+                sky.appendChild(this.element);
             }
 
-            requestAnimationFrame(animatePlane);
+            update() {
+                if (isFinished) return;
+
+                this.posX += this.speed;
+                const currentY = this.posY + Math.sin(this.posX * 0.02 + this.phase) * 30;
+                const angle = Math.sin(this.posX * 0.02 + this.phase) * 15;
+
+                this.element.style.left = this.posX + 'px';
+                this.element.style.top = currentY + 'px';
+                this.element.style.transform = `rotate(${angle}deg)`;
+
+                if (this.posX > window.innerWidth + 150) {
+                    this.posX = -150;
+                    this.posY = Math.random() * (window.innerHeight - 100);
+                }
+            }
+
+            handleClick(e) {
+                e.stopPropagation();
+                if (isFinished) return;
+
+                if (this.type === 'No') {
+                    // Spawn more 'No' planes and 'Si' planes to fill the screen
+                    for(let i=0; i<2; i++) planes.push(new Plane('No'));
+                    planes.push(new Plane('Si'));
+
+                    // Move this one back to start
+                    this.posX = -150;
+                    this.posY = Math.random() * (window.innerHeight - 100);
+                } else {
+                    siClicks++;
+                    if (siClicks >= 5) {
+                        finishCelebration(this.posX, this.posY);
+                    } else {
+                        // Move this one back to start
+                        this.posX = -150;
+                        this.posY = Math.random() * (window.innerHeight - 100);
+
+                        // Add more planes as requested (3 times the same step)
+                        planes.push(new Plane('Si'));
+                        planes.push(new Plane('No'));
+                        planes.push(new Plane('No'));
+                    }
+                }
+            }
+
+            remove() {
+                this.element.remove();
+            }
         }
 
-        animatePlane();
+        // Initial planes
+        planes.push(new Plane('Si'));
+        planes.push(new Plane('No'));
 
-        // Interaction
-        sky.addEventListener('click', (e) => {
-            if (isStopped) return;
-            isStopped = true;
+        function animate() {
+            planes.forEach(p => p.update());
+            if (!isFinished) requestAnimationFrame(animate);
+        }
 
-            const rect = planeContainer.getBoundingClientRect();
-            const centerX = rect.left + rect.width / 2;
-            const centerY = rect.top + rect.height / 2;
+        animate();
 
-            // Hide plane
-            planeContainer.style.display = 'none';
+        function finishCelebration(x, y) {
+            isFinished = true;
 
-            // Show bouquet at plane's position
+            // Hide all planes
+            planes.forEach(p => p.remove());
+
+            // Show bouquet at last click position
             bouquet.style.display = 'block';
-            bouquet.style.left = centerX + 'px';
-            bouquet.style.top = centerY + 'px';
+            bouquet.style.left = x + 50 + 'px';
+            bouquet.style.top = y + 50 + 'px';
 
             createBouquet();
 
             // Show message
             messageContainer.style.display = 'block';
-            messageText.classList.add('show-message');
+            messageContainer.classList.add('show-message');
 
             createConfetti();
-        });
+        }
 
         function createBouquet() {
             const flowerColors = ['#ff69b4', '#ff1493', '#ffc0cb', '#da70d6', '#ba55d3', '#ffffff', '#ffd700'];
-            const flowerCount = 30;
+            const flowerCount = 40;
 
             for (let i = 0; i < flowerCount; i++) {
                 const flower = document.createElement('div');
                 flower.className = 'flower';
 
-                // Randomize position in the bouquet
                 const angle = Math.random() * Math.PI * 2;
-                const radius = Math.random() * 130;
-                const x = Math.cos(angle) * radius;
-                const y = Math.sin(angle) * radius;
+                const radius = Math.random() * 150;
+                const fx = Math.cos(angle) * radius;
+                const fy = Math.sin(angle) * radius;
                 const r = Math.random() * 360;
 
-                flower.style.setProperty('--x', x + 'px');
-                flower.style.setProperty('--y', y + 'px');
+                flower.style.setProperty('--x', fx + 'px');
+                flower.style.setProperty('--y', fy + 'px');
                 flower.style.setProperty('--r', r + 'deg');
 
                 const color = flowerColors[Math.floor(Math.random() * flowerColors.length)];
-                const type = Math.floor(Math.random() * 3); // 3 types of flowers
+                const type = Math.floor(Math.random() * 3);
 
                 let flowerSVG = '';
                 if (type === 0) {
-                    // Classic Daisy style
                     flowerSVG = `
                         <svg width="45" height="45" viewBox="0 0 100 100">
                             <circle cx="50" cy="50" r="15" fill="#ffd700" />
@@ -259,7 +316,6 @@
                         </svg>
                     `;
                 } else if (type === 1) {
-                    // Rounded petal style
                     flowerSVG = `
                         <svg width="40" height="40" viewBox="0 0 100 100">
                             <circle cx="50" cy="50" r="12" fill="#ffd700" />
@@ -269,7 +325,6 @@
                         </svg>
                     `;
                 } else {
-                    // Tulip style
                     flowerSVG = `
                         <svg width="35" height="35" viewBox="0 0 100 100">
                             <path d="M50,100 Q20,80 20,50 Q20,20 50,40 Q80,20 80,50 Q80,80 50,100" fill="${color}" />
@@ -281,16 +336,15 @@
                 flower.innerHTML = flowerSVG;
                 bouquet.appendChild(flower);
 
-                // Trigger animation with a small delay for each flower
                 setTimeout(() => {
                     flower.classList.add('blooming');
-                }, i * 50);
+                }, i * 40);
             }
         }
 
         function createConfetti() {
             const colors = ['#ff69b4', '#ff1493', '#ffd700', '#005faa', '#84c44c'];
-            for (let i = 0; i < 100; i++) {
+            for (let i = 0; i < 150; i++) {
                 const confetti = document.createElement('div');
                 confetti.className = 'confetti';
                 confetti.style.left = Math.random() * 100 + 'vw';
@@ -298,7 +352,7 @@
                 confetti.style.width = Math.random() * 10 + 5 + 'px';
                 confetti.style.height = confetti.style.width;
                 confetti.style.animation = `confetti-fall ${Math.random() * 3 + 2}s linear forwards`;
-                confetti.style.animationDelay = Math.random() * 2 + 's';
+                confetti.style.animationDelay = Math.random() * 3 + 's';
                 document.body.appendChild(confetti);
             }
         }
