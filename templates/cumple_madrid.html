@@ -140,7 +140,7 @@
             width: 100%;
             display: flex;
             justify-content: center;
-            gap: 50px;
+            gap: 30px;
             z-index: 500;
             pointer-events: none;
             display: none;
@@ -239,7 +239,11 @@
             </div>
             <div class="stat-box">
                 <div class="stat-label">Objetivo</div>
-                <div class="stat-value">3</div>
+                <div class="stat-value">5</div>
+            </div>
+            <div class="stat-box" style="border-bottom-color: #de2a2b;">
+                <div class="stat-label">VAR</div>
+                <div id="var-val" class="stat-value">0</div>
             </div>
         </div>
 
@@ -256,11 +260,13 @@
 
     <script>
         let score = 0;
-        const targetScore = 3;
+        let varCount = 0;
+        const targetScore = 5;
         let gameActive = false;
         const container = document.getElementById('game-container');
         const hud = document.getElementById('hud');
         const scoreVal = document.getElementById('score-val');
+        const varVal = document.getElementById('var-val');
         const intro = document.getElementById('intro-overlay');
         const final = document.getElementById('final-message');
 
@@ -272,7 +278,10 @@
                     intro.style.display = 'none';
                     hud.style.display = 'flex';
                     gameActive = true;
+                    // Empezar con varios balones para más dificultad
                     spawnBall();
+                    setTimeout(spawnBall, 1000);
+                    setTimeout(spawnBall, 2000);
                 }
             });
         }
@@ -291,8 +300,8 @@
 
             container.appendChild(ball);
 
-            // Trayectoria aleatoria
-            const duration = 2 + Math.random() * 2;
+            // Trayectoria aleatoria - MÁS RÁPIDO
+            const duration = 1.2 + Math.random() * 1.5;
             gsap.to(ball, {
                 x: window.innerWidth + 200,
                 y: startY + (Math.random() - 0.5) * 400,
@@ -348,9 +357,12 @@
         }
 
         function handleMiss(x, y) {
+            varCount++;
+            varVal.innerText = varCount;
+
             const varMsg = document.createElement('div');
             varMsg.className = 'var-popup';
-            varMsg.innerHTML = '<span>📺</span> VAR: ¡Fuera de juego!';
+            varMsg.innerHTML = '<span>📺</span> VAR: Peor de marrano al Vinícius';
             varMsg.style.left = `${x}px`;
             varMsg.style.top = `${y}px`;
             container.appendChild(varMsg);
