@@ -3,359 +3,457 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Celebración Día de la Mujer - UIB</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <title>Feliz Día de la Mujer - Una Sorpresa Especial</title>
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
     <style>
         :root {
-            --primary-blue: #005faa;
-            --accent-pink: #ff69b4;
-            --soft-pink: #ffe4e1;
-            --gold: #d4af37;
+            --primary-pink: #ff69b4;
+            --dark-pink: #c71585;
+            --soft-pink: #fff0f5;
+            --gold: #ffd700;
         }
 
         body, html {
-            height: 100%;
             margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
             overflow: hidden;
-            background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+            background: radial-gradient(circle, #fff0f5 0%, #ffe4e1 100%);
             font-family: 'Playfair Display', serif;
         }
 
-        #sky {
+        #canvas-container {
             position: relative;
-            width: 100vw;
-            height: 100vh;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
         }
 
-        /* Plane Styling */
+        /* Instrucciones iniciales */
+        #instructions {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 40px;
+            border-radius: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            max-width: 500px;
+            border: 2px solid var(--primary-pink);
+        }
+
+        #instructions h2 {
+            font-family: 'Dancing Script', cursive;
+            color: var(--dark-pink);
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+        }
+
+        #instructions p {
+            color: #555;
+            font-size: 1.2rem;
+            line-height: 1.6;
+        }
+
+        .start-btn {
+            background: var(--dark-pink);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            border-radius: 30px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.3s;
+            font-family: sans-serif;
+            font-weight: bold;
+        }
+
+        .start-btn:hover {
+            transform: scale(1.05);
+            background: var(--primary-pink);
+        }
+
+        /* Aviones */
         .plane-wrapper {
             position: absolute;
             width: 100px;
             height: 100px;
-            z-index: 10;
             cursor: pointer;
+            z-index: 100;
+            filter: drop-shadow(0 5px 10px rgba(0,0,0,0.1));
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
         }
 
-        .paper-plane {
-            width: 60px;
-            height: 60px;
-            fill: var(--primary-blue);
-            filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.2));
-            transition: transform 0.3s;
-        }
-
         .plane-label {
-            font-family: 'Dancing Script', cursive;
-            font-weight: bold;
-            font-size: 1.5rem;
-            color: var(--primary-blue);
-            margin-top: -10px;
-            pointer-events: none;
-            user-select: none;
-            background: rgba(255,255,255,0.7);
-            padding: 2px 8px;
+            position: absolute;
+            top: -25px;
+            background: var(--dark-pink);
+            color: white;
+            padding: 2px 10px;
             border-radius: 10px;
+            font-family: sans-serif;
+            font-size: 0.9rem;
+            font-weight: bold;
+            pointer-events: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
 
-        .plane-wrapper:hover .paper-plane {
-            transform: scale(1.1);
-            fill: var(--accent-pink);
+        .plane-svg {
+            width: 70px;
+            height: 70px;
         }
 
-        .plane-wrapper:hover .plane-label {
-            color: var(--accent-pink);
-        }
-
-        /* Bouquet Styling */
-        #bouquet {
-            position: absolute;
-            display: none;
-            width: 300px;
-            height: 300px;
-            transform: translate(-50%, -50%);
-            z-index: 20;
-        }
-
-        .flower {
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%) scale(0);
-            opacity: 0;
-        }
-
-        @keyframes bloom {
-            0% { transform: translate(-50%, -50%) scale(0) rotate(0deg); opacity: 0; }
-            100% { transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) scale(1) rotate(var(--r)); opacity: 1; }
-        }
-
-        .blooming {
-            animation: bloom 1.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-        }
-
-        /* Message Styling */
-        #message-container {
+        /* Mensaje final */
+        .message-container {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
             text-align: center;
-            display: none;
-            z-index: 30;
-            pointer-events: none;
             width: 90%;
+            pointer-events: none;
+            opacity: 0;
+            z-index: 200;
         }
 
-        .celebration-text {
+        .main-message {
             font-family: 'Dancing Script', cursive;
-            font-size: 4rem;
-            color: var(--accent-pink);
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.1), 0 0 20px rgba(255, 105, 180, 0.3);
-            opacity: 0;
-            transform: translateY(20px);
-            line-height: 1.2;
+            font-size: clamp(3rem, 10vw, 6rem);
+            color: var(--dark-pink);
+            text-shadow: 3px 3px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
         }
 
-        .celebration-subtext {
-            font-family: 'Playfair Display', serif;
-            font-size: 1.8rem;
-            color: var(--primary-blue);
-            opacity: 0;
-            transform: translateY(20px);
-            margin-top: 20px;
+        .sub-message {
+            font-size: clamp(1rem, 4vw, 1.8rem);
+            color: #555;
+            font-style: italic;
+            line-height: 1.6;
+            background: rgba(255, 255, 255, 0.4);
+            padding: 20px;
+            border-radius: 20px;
         }
 
-        @keyframes fadeInUp {
-            to { opacity: 1; transform: translateY(0); }
+        .flower {
+            position: absolute;
+            pointer-events: none;
+            z-index: 150;
         }
 
-        .show-message .celebration-text {
-            animation: fadeInUp 2s ease-out forwards 0.5s;
-        }
-
-        .show-message .celebration-subtext {
-            animation: fadeInUp 2s ease-out forwards 1.5s;
-        }
-
-        /* Confetti Effect */
         .confetti {
             position: absolute;
             width: 10px;
             height: 10px;
-            background-color: #f00;
-            opacity: 0;
-            z-index: 5;
+            pointer-events: none;
+            z-index: 140;
         }
 
-        @keyframes confetti-fall {
-            0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; }
-            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        /* Progresión */
+        #progress-bar {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 10px;
+            background: rgba(0,0,0,0.1);
+            border-radius: 5px;
+            overflow: hidden;
+            display: none;
+        }
+
+        #progress-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--dark-pink);
+            transition: width 0.5s ease;
         }
     </style>
 </head>
 <body>
 
-    <div id="sky">
-        <div id="bouquet">
-            <!-- Flowers will be injected here via JS -->
+    <div id="canvas-container">
+        <!-- Instrucciones -->
+        <div id="instructions">
+            <h2>¡Hola Especial! ✨</h2>
+            <p>He preparado una sorpresa para la mujer más hermosa de mi vida. <br><br>Atrapa el avión del <b>"Si"</b> para avanzar, pero ¡cuidado con el "No", es travieso!</p>
+            <button class="start-btn" onclick="initGame()">Comenzar</button>
         </div>
 
-        <div id="message-container">
-            <h1 class="celebration-text">Feliz Dia de la mujer a la mujer mas hermosa de mi vida</h1>
-            <p class="celebration-subtext">Te amo mucho mi vida<br>Naz</p>
+        <!-- Aviones (Se crean dinámicamente) -->
+
+        <!-- Mensaje Final -->
+        <div class="message-container" id="message">
+            <h1 class="main-message">¡Feliz Día de la Mujer!</h1>
+            <p class="sub-message">
+                "Para la mujer más hermosa de mi vida."<br><br>
+                Hoy celebro tu existencia, tu fuerza y esa luz que ilumina todo a tu paso.<br>
+                Eres el regalo más bonito que la vida me ha dado.<br><br>
+                <b>Te amo mucho mi vida.</b><br>
+                <span style="display: block; margin-top: 15px; font-family: 'Dancing Script'; font-size: 2.5rem;">Con amor, Naz</span>
+            </p>
+        </div>
+
+        <div id="progress-bar">
+            <div id="progress-fill"></div>
         </div>
     </div>
 
     <script>
-        const sky = document.getElementById('sky');
-        const bouquet = document.getElementById('bouquet');
-        const messageContainer = document.getElementById('message-container');
+        const container = document.getElementById('canvas-container');
+        const message = document.getElementById('message');
+        const instructions = document.getElementById('instructions');
+        const progressBar = document.getElementById('progress-bar');
+        const progressFill = document.getElementById('progress-fill');
 
-        let siClicks = 0;
-        let isFinished = false;
-        const planes = [];
+        let gameStarted = false;
+        let step = 0;
+        const totalSteps = 5;
+        let planes = [];
 
-        class Plane {
-            constructor(type) {
-                this.type = type; // 'Si' or 'No'
-                this.posX = -150 - (Math.random() * 500);
-                this.posY = Math.random() * (window.innerHeight - 100);
-                this.speed = 2 + Math.random() * 3;
-                this.phase = Math.random() * Math.PI * 2;
+        function initGame() {
+            gsap.to(instructions, {
+                opacity: 0,
+                scale: 0.8,
+                duration: 0.5,
+                onComplete: () => {
+                    instructions.style.display = 'none';
+                    gameStarted = true;
+                    progressBar.style.display = 'block';
+                    createPlanes();
+                }
+            });
+        }
 
+        class PaperPlane {
+            constructor(label) {
+                this.label = label;
                 this.element = document.createElement('div');
                 this.element.className = 'plane-wrapper';
                 this.element.innerHTML = `
-                    <svg class="paper-plane" viewBox="0 0 24 24">
-                        <path d="M2,21L23,12L2,3V10L17,12L2,14V21Z" />
+                    <div class="plane-label label-${label}">${label}</div>
+                    <svg class="plane-svg" viewBox="0 0 100 100">
+                        <path d="M50 50 L10 50 L90 20 Z" fill="white" stroke="#ddd" />
+                        <path d="M50 50 L70 80 L90 20 Z" fill="#fcfcfc" stroke="#ddd" />
+                        <path d="M50 50 L90 20 L50 45 Z" fill="#eee" stroke="#ccc" />
                     </svg>
-                    <div class="plane-label label-${this.type}">${this.type}</div>
                 `;
 
-                this.element.addEventListener('click', (e) => this.handleClick(e));
-                sky.appendChild(this.element);
+                container.appendChild(this.element);
+
+                this.posX = Math.random() * window.innerWidth;
+                this.posY = Math.random() * window.innerHeight;
+                this.targetX = Math.random() * window.innerWidth;
+                this.targetY = Math.random() * window.innerHeight;
+                this.angle = 0;
+                this.velocity = 0.01 + Math.random() * 0.01;
+
+                this.element.onclick = (e) => this.handleClick(e);
+                this.update();
             }
 
             update() {
-                if (isFinished) return;
+                if (!gameStarted) return;
 
-                this.posX += this.speed;
-                const currentY = this.posY + Math.sin(this.posX * 0.02 + this.phase) * 30;
-                const angle = Math.sin(this.posX * 0.02 + this.phase) * 15;
+                this.posX += (this.targetX - this.posX) * this.velocity;
+                this.posY += (this.targetY - this.posY) * this.velocity;
 
-                this.element.style.left = this.posX + 'px';
-                this.element.style.top = currentY + 'px';
-                this.element.style.transform = `rotate(${angle}deg)`;
+                const dx = this.targetX - this.posX;
+                const dy = this.targetY - this.posY;
+                const targetAngle = Math.atan2(dy, dx) * 180 / Math.PI;
 
-                if (this.posX > window.innerWidth + 150) {
-                    this.posX = -150;
-                    this.posY = Math.random() * (window.innerHeight - 100);
+                let diff = targetAngle - this.angle;
+                while (diff < -180) diff += 360;
+                while (diff > 180) diff -= 360;
+                this.angle += diff * 0.1;
+
+                this.element.style.left = `${this.posX}px`;
+                this.element.style.top = `${this.posY}px`;
+                this.element.style.transform = `translate(-50%, -50%) rotate(${this.angle}deg)`;
+
+                if (Math.abs(this.targetX - this.posX) < 50) {
+                    this.targetX = Math.random() * window.innerWidth;
+                    this.targetY = Math.random() * window.innerHeight;
                 }
+
+                this.raf = requestAnimationFrame(() => this.update());
             }
 
             handleClick(e) {
                 e.stopPropagation();
-                if (isFinished) return;
-
-                if (this.type === 'No') {
-                    // Spawn more 'No' planes and 'Si' planes to fill the screen
-                    for(let i=0; i<2; i++) planes.push(new Plane('No'));
-                    planes.push(new Plane('Si'));
-
-                    // Move this one back to start
-                    this.posX = -150;
-                    this.posY = Math.random() * (window.innerHeight - 100);
+                if (this.label === 'Si') {
+                    handleSi(this.posX, this.posY);
                 } else {
-                    siClicks++;
-                    if (siClicks >= 5) {
-                        finishCelebration(this.posX, this.posY);
-                    } else {
-                        // Move this one back to start
-                        this.posX = -150;
-                        this.posY = Math.random() * (window.innerHeight - 100);
-
-                        // Add more planes as requested (3 times the same step)
-                        planes.push(new Plane('Si'));
-                        planes.push(new Plane('No'));
-                        planes.push(new Plane('No'));
-                    }
+                    handleNo(this.posX, this.posY);
                 }
             }
 
-            remove() {
+            destroy() {
+                cancelAnimationFrame(this.raf);
                 this.element.remove();
             }
         }
 
-        // Initial planes
-        planes.push(new Plane('Si'));
-        planes.push(new Plane('No'));
-
-        function animate() {
-            planes.forEach(p => p.update());
-            if (!isFinished) requestAnimationFrame(animate);
+        function createPlanes() {
+            planes.push(new PaperPlane('Si'));
+            planes.push(new PaperPlane('No'));
         }
 
-        animate();
+        function handleSi(x, y) {
+            step++;
+            progressFill.style.width = `${(step / totalSteps) * 100}%`;
 
-        function finishCelebration(x, y) {
-            isFinished = true;
+            // Efecto de flores
+            for(let i=0; i<8; i++) createFlower(x, y);
 
-            // Hide all planes
-            planes.forEach(p => p.remove());
-
-            // Show bouquet at last click position
-            bouquet.style.display = 'block';
-            bouquet.style.left = x + 50 + 'px';
-            bouquet.style.top = y + 50 + 'px';
-
-            createBouquet();
-
-            // Show message
-            messageContainer.style.display = 'block';
-            messageContainer.classList.add('show-message');
-
-            createConfetti();
+            if (step >= totalSteps) {
+                endGame();
+            } else {
+                // Reubicar aviones
+                planes.forEach(p => {
+                    p.targetX = Math.random() * window.innerWidth;
+                    p.targetY = Math.random() * window.innerHeight;
+                });
+            }
         }
 
-        function createBouquet() {
-            const flowerColors = ['#ff69b4', '#ff1493', '#ffc0cb', '#da70d6', '#ba55d3', '#ffffff', '#ffd700'];
-            const flowerCount = 40;
+        let noClickCount = 0;
+        function handleNo(x, y) {
+            noClickCount++;
+            if (noClickCount % 2 === 0) {
+                // Explosión
+                createExplosion(x, y);
+            } else {
+                // Ola de aviones
+                createPlaneWave();
+            }
+        }
 
-            for (let i = 0; i < flowerCount; i++) {
-                const flower = document.createElement('div');
-                flower.className = 'flower';
+        function createFlower(x, y) {
+            const f = document.createElement('div');
+            f.className = 'flower';
+            f.innerHTML = `<svg width="40" height="40" viewBox="0 0 100 100"><circle cx="50" cy="50" r="15" fill="#ffd700"/><circle cx="50" cy="20" r="20" fill="${['#ff69b4','#ff1493','#ffffff'][Math.floor(Math.random()*3)]}" opacity="0.8"/></svg>`;
+            f.style.left = `${x}px`;
+            f.style.top = `${y}px`;
+            container.appendChild(f);
+
+            gsap.to(f, {
+                x: (Math.random() - 0.5) * 200,
+                y: (Math.random() - 0.5) * 200,
+                rotation: Math.random() * 360,
+                scale: 0,
+                duration: 2,
+                onComplete: () => f.remove()
+            });
+        }
+
+        function createExplosion(x, y) {
+            for(let i=0; i<30; i++) {
+                const c = document.createElement('div');
+                c.className = 'confetti';
+                c.style.backgroundColor = ['#de2a2b', '#ff69b4', '#ffd700'][Math.floor(Math.random()*3)];
+                c.style.left = `${x}px`;
+                c.style.top = `${y}px`;
+                container.appendChild(c);
 
                 const angle = Math.random() * Math.PI * 2;
-                const radius = Math.random() * 150;
-                const fx = Math.cos(angle) * radius;
-                const fy = Math.sin(angle) * radius;
-                const r = Math.random() * 360;
+                const dist = 100 + Math.random() * 200;
+                gsap.to(c, {
+                    x: Math.cos(angle) * dist,
+                    y: Math.sin(angle) * dist,
+                    opacity: 0,
+                    duration: 1,
+                    onComplete: () => c.remove()
+                });
+            }
+        }
 
-                flower.style.setProperty('--x', fx + 'px');
-                flower.style.setProperty('--y', fy + 'px');
-                flower.style.setProperty('--r', r + 'deg');
+        function createPlaneWave() {
+            for(let i=0; i<15; i++) {
+                const p = document.createElement('div');
+                p.className = 'plane-wrapper';
+                p.style.pointerEvents = 'none';
+                p.innerHTML = `<svg class="plane-svg" viewBox="0 0 100 100"><path d="M50 50 L10 50 L90 20 Z" fill="rgba(255,255,255,0.5)" stroke="#ccc" /></svg>`;
+                p.style.left = `-100px`;
+                p.style.top = `${Math.random() * window.innerHeight}px`;
+                container.appendChild(p);
 
-                const color = flowerColors[Math.floor(Math.random() * flowerColors.length)];
-                const type = Math.floor(Math.random() * 3);
+                gsap.to(p, {
+                    left: window.innerWidth + 200,
+                    x: 200,
+                    y: (Math.random() - 0.5) * 300,
+                    duration: 2 + Math.random(),
+                    onComplete: () => p.remove()
+                });
+            }
+        }
 
-                let flowerSVG = '';
-                if (type === 0) {
-                    flowerSVG = `
-                        <svg width="45" height="45" viewBox="0 0 100 100">
-                            <circle cx="50" cy="50" r="15" fill="#ffd700" />
-                            ${[0, 45, 90, 135, 180, 225, 270, 315].map(rot =>
-                                `<path d="M50,0 Q60,25 50,50 Q40,25 50,0" fill="${color}" transform="rotate(${rot} 50 50)" />`
-                            ).join('')}
-                        </svg>
-                    `;
-                } else if (type === 1) {
-                    flowerSVG = `
-                        <svg width="40" height="40" viewBox="0 0 100 100">
-                            <circle cx="50" cy="50" r="12" fill="#ffd700" />
-                            ${[0, 60, 120, 180, 240, 300].map(rot =>
-                                `<circle cx="50" cy="25" r="20" fill="${color}" transform="rotate(${rot} 50 50)" opacity="0.8" />`
-                            ).join('')}
-                        </svg>
-                    `;
-                } else {
-                    flowerSVG = `
-                        <svg width="35" height="35" viewBox="0 0 100 100">
-                            <path d="M50,100 Q20,80 20,50 Q20,20 50,40 Q80,20 80,50 Q80,80 50,100" fill="${color}" />
-                            <path d="M50,100 Q35,70 35,40 Q50,10 65,40 Q65,70 50,100" fill="${color}" filter="brightness(0.9)" />
-                        </svg>
-                    `;
-                }
+        function endGame() {
+            gameStarted = false;
+            planes.forEach(p => p.destroy());
+            progressBar.style.display = 'none';
 
-                flower.innerHTML = flowerSVG;
-                bouquet.appendChild(flower);
+            const centerX = window.innerWidth / 2;
+            const centerY = window.innerHeight / 2;
 
+            // Ramo final masivo
+            for(let i=0; i<80; i++) {
                 setTimeout(() => {
-                    flower.classList.add('blooming');
-                }, i * 40);
+                    const f = document.createElement('div');
+                    f.className = 'flower';
+                    const angle = Math.random() * Math.PI * 2;
+                    const dist = Math.random() * 250;
+                    f.style.left = `${centerX + Math.cos(angle)*dist}px`;
+                    f.style.top = `${centerY + Math.sin(angle)*dist}px`;
+                    f.innerHTML = `<svg width="60" height="60" viewBox="0 0 100 100"><circle cx="50" cy="50" r="15" fill="#ffd700"/><ellipse cx="50" cy="25" rx="10" ry="25" fill="#ff69b4" transform="rotate(${Math.random()*360} 50 50)"/></svg>`;
+                    container.appendChild(f);
+                    gsap.from(f, { scale: 0, rotation: 180, duration: 1, ease: "back.out" });
+                }, i * 20);
             }
+
+            gsap.to(message, {
+                opacity: 1,
+                y: -50,
+                duration: 2,
+                delay: 1,
+                ease: "power3.out"
+            });
+
+            // Lluvia de confeti
+            setInterval(() => {
+                const c = document.createElement('div');
+                c.className = 'confetti';
+                c.style.left = `${Math.random()*window.innerWidth}px`;
+                c.style.top = `-20px`;
+                c.style.backgroundColor = ['#ff69b4','#ffd700','#ffffff'][Math.floor(Math.random()*3)];
+                container.appendChild(c);
+                gsap.to(c, {
+                    y: window.innerHeight + 50,
+                    x: (Math.random()-0.5)*200,
+                    rotation: 720,
+                    duration: 3 + Math.random()*2,
+                    onComplete: () => c.remove()
+                });
+            }, 100);
         }
 
-        function createConfetti() {
-            const colors = ['#ff69b4', '#ff1493', '#ffd700', '#005faa', '#84c44c'];
-            for (let i = 0; i < 150; i++) {
-                const confetti = document.createElement('div');
-                confetti.className = 'confetti';
-                confetti.style.left = Math.random() * 100 + 'vw';
-                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-                confetti.style.width = Math.random() * 10 + 5 + 'px';
-                confetti.style.height = confetti.style.width;
-                confetti.style.animation = `confetti-fall ${Math.random() * 3 + 2}s linear forwards`;
-                confetti.style.animationDelay = Math.random() * 3 + 's';
-                document.body.appendChild(confetti);
+        window.addEventListener('resize', () => {
+            if (gameStarted) {
+                planes.forEach(p => {
+                    p.targetX = Math.random() * window.innerWidth;
+                    p.targetY = Math.random() * window.innerHeight;
+                });
             }
-        }
+        });
     </script>
 </body>
 </html>
