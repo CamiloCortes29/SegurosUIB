@@ -94,6 +94,27 @@
             box-shadow: 0 0 30px var(--madrid-gold);
         }
 
+        .btn-diff {
+            background: transparent;
+            color: white;
+            border: 2px solid var(--madrid-gold);
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: 'Oswald', sans-serif;
+            text-transform: uppercase;
+            transition: all 0.3s;
+            font-size: 1rem;
+        }
+        .btn-diff.active {
+            background: var(--madrid-gold);
+            color: var(--madrid-navy);
+            font-weight: bold;
+        }
+        .btn-diff:hover {
+            background: rgba(254, 190, 16, 0.3);
+        }
+
         /* Juego */
         .ball {
             position: absolute;
@@ -227,7 +248,17 @@
                 </svg>
             </div>
             <h1>¡El Gran Fichaje!</h1>
-            <p>Hoy celebramos el 3er año de un verdadero galáctico. <br> ¿Estás listo para marcar los goles de la victoria?</p>
+            <p>Hoy celebramos los 31 años de un verdadero galáctico. <br> ¿Estás listo para marcar los goles de la victoria?</p>
+
+            <div class="difficulty-selector" style="margin-bottom: 30px;">
+                <p style="font-size: 1.1rem; margin-bottom: 10px; font-family: 'Oswald'; font-style: normal; text-transform: uppercase;">Selecciona tu nivel:</p>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-diff active" onclick="setDifficulty('easy', this)">Banquillo</button>
+                    <button class="btn-diff" onclick="setDifficulty('medium', this)">Titular</button>
+                    <button class="btn-diff" onclick="setDifficulty('hard', this)">Balón de Oro</button>
+                </div>
+            </div>
+
             <button class="btn-start" onclick="startGame()">¡A por la 16!</button>
         </div>
 
@@ -254,21 +285,38 @@
                 <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/European_Cup_trophy.svg/512px-European_Cup_trophy.svg.png" alt="Champions Trophy" style="width: 100%;">
             </div>
             <h1 class="hala-madrid">¡HALA MADRID!</h1>
-            <p style="color: var(--madrid-navy); font-size: 1.8rem;">"3 años dominando el campo como los mejores."</p>
+            <p style="color: var(--madrid-navy); font-size: 1.8rem;">"31 años dominando el campo como los mejores."</p>
         </div>
     </div>
 
     <script>
         let score = 0;
         let varCount = 0;
-        const targetScore = 5;
+        let targetScore = 5;
+        let difficulty = 'easy';
+
+        const diffSettings = {
+            easy: { duration: [2.5, 3.5], balls: 1, target: 5 },
+            medium: { duration: [1.2, 2.0], balls: 3, target: 10 },
+            hard: { duration: [0.6, 1.1], balls: 5, target: 15 }
+        };
+
         let gameActive = false;
         const container = document.getElementById('game-container');
         const hud = document.getElementById('hud');
         const scoreVal = document.getElementById('score-val');
         const varVal = document.getElementById('var-val');
+        const targetVal = document.querySelectorAll('.stat-value')[1];
         const intro = document.getElementById('intro-overlay');
         const final = document.getElementById('final-message');
+
+        function setDifficulty(level, btn) {
+            difficulty = level;
+            document.querySelectorAll('.btn-diff').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            targetScore = diffSettings[level].target;
+            targetVal.innerText = targetScore;
+        }
 
         function startGame() {
             gsap.to(intro, {
@@ -278,10 +326,11 @@
                     intro.style.display = 'none';
                     hud.style.display = 'flex';
                     gameActive = true;
-                    // Empezar con varios balones para más dificultad
-                    spawnBall();
-                    setTimeout(spawnBall, 1000);
-                    setTimeout(spawnBall, 2000);
+
+                    const settings = diffSettings[difficulty];
+                    for(let i=0; i<settings.balls; i++) {
+                        setTimeout(spawnBall, i * 500);
+                    }
                 }
             });
         }
@@ -300,8 +349,10 @@
 
             container.appendChild(ball);
 
-            // Trayectoria aleatoria - MÁS RÁPIDO
-            const duration = 1.2 + Math.random() * 1.5;
+            // Trayectoria aleatoria basada en dificultad
+            const settings = diffSettings[difficulty];
+            const duration = settings.duration[0] + Math.random() * (settings.duration[1] - settings.duration[0]);
+
             gsap.to(ball, {
                 x: window.innerWidth + 200,
                 y: startY + (Math.random() - 0.5) * 400,
