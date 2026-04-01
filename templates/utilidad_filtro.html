@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Resumen de Vigencias (Local)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #005faa;
+            --secondary: #04a0d9;
+            --accent: #f57e21;
+            --success: #84c44c;
+            --danger: #de2a2b;
+            --dark: #23496d;
+            --bg: #f5f6fa;
+            --text: #2f3640;
+        }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 20px; }
+        .container { max-width: 1300px; margin: 0 auto; }
+        .header { background: linear-gradient(135deg, var(--primary), var(--dark)); color: white; padding: 40px; border-radius: 15px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-bottom: 30px; }
+        .card { background: white; border-radius: 12px; padding: 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 25px; }
+        .drop-zone { border: 3px dashed #dcdde1; border-radius: 12px; padding: 50px; text-align: center; cursor: pointer; transition: 0.3s; }
+        .drop-zone:hover { border-color: var(--primary); background: #f1f2f6; }
+        .filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; align-items: end; }
+        .form-group { display: flex; flex-direction: column; gap: 8px; }
+        label { font-weight: 600; font-size: 0.9rem; color: var(--primary); }
+        select, input { padding: 12px; border: 1px solid #dcdde1; border-radius: 8px; font-size: 1rem; }
+        .btn { padding: 12px 25px; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.3s; }
+        .btn-process { background: var(--primary); color: white; }
+        .btn-download { background: var(--success); color: white; }
+        .table-wrapper { overflow-x: auto; margin-top: 25px; border-radius: 8px; border: 1px solid #eee; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th { background: #f8f9fa; padding: 15px; text-align: left; color: var(--primary); border-bottom: 2px solid #eee; }
+        td { padding: 12px 15px; border-bottom: 1px solid #f1f2f6; }
+        .hidden { display: none; }
+        .badge { background: var(--accent); color: white; padding: 4px 10px; border-radius: 15px; font-size: 0.75rem; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <div class="logo-container">
+            <img src="{{ url_for('static', filename='UIBH_logo_WHITE2-300x78-1.png') }}" alt="Logo UIB" style="max-height: 60px; margin-bottom: 20px;">
+        </div>
+        <h1><i class="fas fa-magic"></i> Procesador de Vigencias Consolidado</h1>
+        <p>Carga el archivo original para generar automáticamente el Resumen Pivot</p>
+    </div>
+
+    <div class="card">
+        <div class="drop-zone" id="dropZone">
+            <i class="fas fa-file-excel fa-4x" style="color: var(--primary); margin-bottom: 15px;"></i>
+            <p id="fileName">Haz clic o arrastra el archivo Excel original aquí</p>
+            <input type="file" id="fileInput" accept=".xlsx, .xls" class="hidden">
+        </div>
+        <div id="loadStatus" style="margin-top: 15px; text-align: center; font-weight: bold;"></div>
+    </div>
+
+    <div id="mainSection" class="hidden">
+        <div class="card">
+            <h3><i class="fas fa-filter"></i> Filtros del Reporte Consolidado</h3>
+            <div class="filters">
+                <div class="form-group">
+                    <label>Año FV Actual</label>
+                    <select id="selYear"><option value="">Cargando...</option></select>
+                </div>
+                <div class="form-group">
+                    <label>Mes FV Actual</label>
+                    <select id="selMonth">
+                        <option value="">Todos</option>
+                        <option value="0">Enero</option><option value="1">Febrero</option><option value="2">Marzo</option>
+                        <option value="3">Abril</option><option value="4">Mayo</option><option value="5">Junio</option>
+                        <option value="6">Julio</option><option value="7">Agosto</option><option value="8">Septiembre</option>
+                        <option value="9">Octubre</option><option value="10">Noviembre</option><option value="11">Diciembre</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Área</label>
+                    <select id="selArea"><option value="">Todas</option></select>
+                </div>
+                <div class="form-group">
+                    <button onclick="applyFilters()" class="btn btn-process"><i class="fas fa-sync"></i> Aplicar Filtros</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3>Vista Previa del Resumen</h3>
+                <button onclick="exportResult()" class="btn btn-download"><i class="fas fa-download"></i> Descargar Resumen_Pivot.xlsx</button>
+            </div>
+            <div id="stats" style="margin: 10px 0; color: #666;"></div>
+            <div class="table-wrapper">
+                <table id="resultTable">
+                    <thead><tr id="tableHead"></tr></thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let pivotData = [];
+    let filteredData = [];
+
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+
+    dropZone.onclick = () => fileInput.click();
+    fileInput.onchange = (e) => processOriginalFile(e.target.files[0]);
+
+    function processOriginalFile(file) {
+        if (!file) return;
+        document.getElementById('loadStatus').innerText = "Procesando lógica de agrupación...";
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = new Uint8Array(e.target.result);
+            const wb = XLSX.read(data, {type: 'array', cellDates: true});
+            const raw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+
+            runConsolidationLogic(raw);
+
+            document.getElementById('fileName').innerText = file.name;
+            document.getElementById('loadStatus').innerHTML = '<span style="color:green">✓ Lógica procesada con éxito</span>';
+            document.getElementById('mainSection').classList.remove('hidden');
+
+            initFilters();
+            applyFilters();
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function runConsolidationLogic(data) {
+        if (!data || data.length === 0) return;
+
+        // Intentar detectar nombres de columnas (insensible a mayúsculas/minúsculas)
+        const first = data[0];
+        const findCol = (prefs) => {
+            for (let p of prefs) {
+                const found = Object.keys(first).find(k => k.toLowerCase() === p.toLowerCase());
+                if (found) return found;
+            }
+            return prefs[0];
+        };
+
+        const COL_FV = findCol(['Fecha FV', 'FV Actual', 'FV']);
+        const COL_ASEG = findCol(['Asegurado', 'Nombre Asegurado', 'Cliente']);
+        const COL_RAMO = findCol(['Ramo', 'Ramo Principal']);
+        const COL_SUB = findCol(['Subtotal COP', 'Monto', 'Prima Neta']);
+        const COL_NOTA = findCol(['NotaCob', 'Nota']);
+        const COL_MVTO = findCol(['Tipo Mvto', 'Movimiento']);
+        const COL_AREA = findCol(['Area', 'Área']);
+        const COL_TIPO_NEG = findCol(['Tipo Negocio']);
+
+        // 1. Normalizar y Consolidar Registros
+        const consolidatedMap = new Map();
+
+        data.forEach(row => {
+            const fvVal = row[COL_FV];
+            const fv = fvVal instanceof Date ? fvVal : new Date(fvVal);
+            if (isNaN(fv.getTime())) return;
+            fv.setHours(0,0,0,0);
+
+            // Se eliminó Anexo NC de la clave para evitar fragmentación
+            const key = [
+                row[COL_NOTA], row[COL_MVTO],
+                row[COL_ASEG], row[COL_RAMO], row[COL_AREA], row[COL_TIPO_NEG],
+                fv.getTime()
+            ].join('|');
+
+            if (!consolidatedMap.has(key)) {
+                consolidatedMap.set(key, {
+                    ...row,
+                    '_fv_date': fv,
+                    '_subtotal': 0,
+                    '_aseg': row[COL_ASEG],
+                    '_ramo': row[COL_RAMO],
+                    '_area': row[COL_AREA],
+                    '_tipo_neg': row[COL_TIPO_NEG],
+                    '_mvto': row[COL_MVTO]
+                });
+            }
+            consolidatedMap.get(key)._subtotal += parseFloat(row[COL_SUB] || 0);
+        });
+
+        const consolArray = Array.from(consolidatedMap.values());
+        const data2026 = consolArray.filter(r => r._fv_date.getFullYear() === 2026);
+        const dataOthers = consolArray.filter(r => r._fv_date.getFullYear() < 2026);
+
+        // 2. Emparejar con Vigencia Anterior
+        pivotData = data2026.map(row => {
+            // Buscar máxima fecha anterior para el mismo Asegurado y Ramo
+            const matches = dataOthers.filter(o =>
+                o._aseg === row._aseg && o._ramo === row._ramo
+            ).sort((a,b) => b._fv_date - a._fv_date);
+
+            const prev = matches[0] || null;
+
+            return {
+                "Nombre Asegurado": row._aseg,
+                "Ramo": row._ramo,
+                "Tipo Negocio": row._tipo_neg,
+                "Area": row._area,
+                "Fv Actual": row._fv_date,
+                "Tipo Mvto Actual": row._mvto,
+                "Monto Actual": row._subtotal,
+                "Fv Anterior": prev ? prev._fv_date : null,
+                "Tipo Mvto Anterior": prev ? prev._mvto : "",
+                "Monto Anterior": prev ? prev._subtotal : 0
+            };
+        });
+    }
+
+    function initFilters() {
+        const years = [...new Set(pivotData.map(r => r['Fv Actual'].getFullYear()))].sort((a,b) => b-a);
+        const areas = [...new Set(pivotData.map(r => r['Area']))].sort();
+
+        const sy = document.getElementById('selYear');
+        sy.innerHTML = '<option value="">Todos</option>';
+        years.forEach(y => sy.innerHTML += `<option value="${y}">${y}</option>`);
+
+        const sa = document.getElementById('selArea');
+        sa.innerHTML = '<option value="">Todas</option>';
+        areas.forEach(a => sa.innerHTML += `<option value="${a}">${a}</option>`);
+    }
+
+    function applyFilters() {
+        const y = document.getElementById('selYear').value;
+        const m = document.getElementById('selMonth').value;
+        const a = document.getElementById('selArea').value;
+
+        filteredData = pivotData.filter(row => {
+            const matchY = !y || row['Fv Actual'].getFullYear().toString() === y;
+            const matchM = m === "" || row['Fv Actual'].getMonth().toString() === m;
+            const matchA = !a || row['Area'] === a;
+            return matchY && matchM && matchA;
+        });
+
+        renderTable();
+    }
+
+    function renderTable() {
+        const head = document.getElementById('tableHead');
+        const body = document.getElementById('tableBody');
+        head.innerHTML = ""; body.innerHTML = "";
+
+        document.getElementById('stats').innerText = `${filteredData.length} registros en el resumen filtrado.`;
+
+        if (filteredData.length === 0) {
+            body.innerHTML = '<tr><td colspan="10" style="text-align:center">No hay datos para estos filtros.</td></tr>';
+            return;
+        }
+
+        const cols = Object.keys(filteredData[0]);
+        cols.forEach(c => { const th = document.createElement('th'); th.innerText = c; head.appendChild(th); });
+
+        filteredData.slice(0, 50).forEach(row => {
+            const tr = document.createElement('tr');
+            cols.forEach(c => {
+                const td = document.createElement('td');
+                let val = row[c];
+                if (val instanceof Date) td.innerText = val.toLocaleDateString();
+                else if (typeof val === 'number') td.innerText = '$ ' + val.toLocaleString();
+                else td.innerText = val || "";
+                tr.appendChild(td);
+            });
+            body.appendChild(tr);
+        });
+    }
+
+    function exportResult() {
+        // Formatear fechas para Excel y asegurar que no tengan hora
+        const dataToExport = filteredData.map(row => {
+            const newRow = { ...row };
+            // Asegurarse que las fechas sean objetos Date de JS (ya lo son, pero por si acaso)
+            // SheetJS manejará el formato si le pasamos cellDates: true al escribir o configuramos la celda
+            return newRow;
+        });
+
+        const ws = XLSX.utils.json_to_sheet(dataToExport);
+
+        // Aplicar formato de fecha a las columnas correspondientes
+        const range = XLSX.utils.decode_range(ws['!ref']);
+        for (let R = range.s.r; R <= range.e.r; ++R) {
+            for (let C = range.s.c; C <= range.e.c; ++C) {
+                const cell_address = { c: C, r: R };
+                const cell_ref = XLSX.utils.encode_cell(cell_address);
+                const cell = ws[cell_ref];
+
+                if (cell && cell.t === 'd') {
+                    cell.z = 'dd/mm/yyyy'; // Formato de fecha sin hora
+                }
+            }
+        }
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Resumen");
+        XLSX.writeFile(wb, `Resumen_Pivot_Filtrado_${new Date().getTime()}.xlsx`);
+    }
+</script>
+</body>
+</html>
