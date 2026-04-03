@@ -2333,6 +2333,16 @@ def panel_cobros():
                            pagos_data=pagos_data,
                            opciones_periodicidad=opciones_periodicidad)
 
+@app.route('/celebracion')
+@login_required
+def celebracion():
+    return render_template('celebracion_mujer.html')
+
+@app.route('/cumpleanos')
+@login_required
+def cumpleanos():
+    return render_template('cumple_madrid.html')
+
 @app.route('/marcar_cobrado/<id_cobro>', methods=['POST'])
 @login_required
 def marcar_cobrado(id_cobro):
