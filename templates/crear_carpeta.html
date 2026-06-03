@@ -3,134 +3,182 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crear Carpeta - UIB</title>
+    <title>Espacio Cliente - Vendedor - UIB</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='main_layout.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        .nav-tabs .nav-link {
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+        .nav-tabs .nav-link.active {
+            color: var(--primary-color);
+            border-bottom: 3px solid var(--primary-color);
+        }
+        .form-section {
+            background-color: #fff;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+    </style>
 </head>
 <body>
 
 <div class="main-container">
     <!-- Sidebar -->
-  <div class="sidebar">
-        <div class="sidebar-header">
-            <a href="{{ url_for('index') }}">
-                <img src="{{ url_for('static', filename='UIBH_logo_WHITE2-300x78-1.png') }}" alt="UIB Logo">
-            </a>
-        </div>
+    <div class="sidebar">
+        <div class="sidebar-header"><a href="{{ url_for('index') }}"><img src="{{ url_for('static', filename='UIBH_logo_WHITE2-300x78-1.png') }}" alt="UIB Logo"></a></div>
         <ul class="nav flex-column">
-            <li class="nav-item"><a class="nav-link active" href="{{ url_for('formulario_remision') }}"><i class="fas fa-file-alt fa-fw"></i> Nueva Remisión</a></li>
-            <li class="nav-item"><a class="nav-link" href="{{ url_for('control') }}"><i class="fas fa-cogs fa-fw"></i> Control de remisiones </a></li>
-            <li class="nav-item"><a class="nav-link" href="{{ url_for('panel_cobros') }}"><i class="fas fa-hand-holding-usd fa-fw"></i> Cobros</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('formulario_remision') }}"><i class="fas fa-file-alt fa-fw"></i> Radicar Remisión</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('control') }}"><i class="fas fa-cogs fa-fw"></i> Control de remisiones</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('panel_cobros') }}"><i class="fas fa-hand-holding-usd fa-fw"></i> Control de Cobros</a></li>
             <li class="nav-item"><a class="nav-link" href="{{ url_for('visualizar_cartera') }}"><i class="fas fa-book fa-fw"></i> Cartera</a></li>
-            <li class="nav-item"><a class="nav-link" href="{{ url_for('visualizar_vencimientos') }}"><i class="fas fa-calendar-times fa-fw"></i> Vencimientos</a></li>
-            <li class="nav-item"><a class="nav-link" href="{{ url_for('prospectos_vista') }}"><i class="fas fa-users fa-fw"></i> Prospectos</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('visualizar_vencimientos') }}"><i class="fas fa-calendar-times fa-fw"></i> Control de Vencimientos</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('prospectos_vista') }}"><i class="fas fa-users fa-fw"></i> Control de Prospectos</a></li>
             <li class="nav-item"><a class="nav-link" href="{{ url_for('siniestros_registrar') }}"><i class="fas fa-car-crash fa-fw"></i> Siniestros</a></li>
             <li class="nav-item"><a class="nav-link" href="{{ url_for('recaudo') }}"><i class="fas fa-chart-line fa-fw"></i> Produccion</a></li>
-            <li class="nav-item"><a class="nav-link" href="{{ url_for('visualizar_sarlaft') }}"><i class="fas fa-user-shield fa-fw"></i> SARLAFT</a></li>
-            <li class="nav-item"><a class="nav-link" href="{{ url_for('mostrar_formulario_crear_carpeta') }}"><i class="fas fa-folder-plus fa-fw"></i> Crear Carpeta</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('visualizar_sarlaft') }}"><i class="fas fa-user-shield fa-fw"></i> Documentos - SARLAFT</a></li>
+            <li class="nav-item"><a class="nav-link active" href="{{ url_for('mostrar_formulario_crear_carpeta') }}"><i class="fas fa-folder-plus fa-fw"></i> Espacio Cliente - Vendedor</a></li>
             <li class="nav-item"><a class="nav-link" href="{{ url_for('mostrar_formulario_carga_maestra') }}"><i class="fas fa-upload fa-fw"></i> Carga Maestra</a></li>
             <li class="nav-item mt-auto"><a class="nav-link" href="{{ url_for('admin.dashboard') }}"><i class="fas fa-tachometer-alt fa-fw"></i> Admin</a></li>
         </ul>
     </div>
+
     <!-- Main Content -->
     <div class="content">
         <header class="pb-3 mb-4 border-bottom d-flex justify-content-between align-items-center">
             <div>
                 <h1 class="h3"><i class="fas fa-folder-plus me-2"></i>Crear Nueva Carpeta</h1>
-                <p class="text-muted">Ingrese los datos para crear la estructura de carpetas.</p>
+                <p class="text-muted">Genere la estructura de carpetas para clientes o vendedores.</p>
             </div>
             <a href="{{ url_for('index') }}" class="btn btn-outline-secondary"><i class="fas fa-arrow-left"></i> Volver al Panel</a>
         </header>
 
-        <div id="notification-container" style="display: none;"></div>
-
-        <form method="POST" action="{{ url_for('ejecutar_crear_carpeta') }}" id="crearCarpetaForm" enctype="multipart/form-data" class="card p-4">
-            <fieldset class="mb-4">
-                <legend class="h5 mb-3"><i class="fas fa-folder-tree"></i> Tipo de Carpeta</legend>
-                <div class="mb-3">
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" name="tipo_carpeta" id="tipo_cliente" value="cliente" checked>
-                        <label class="form-check-label" for="tipo_cliente">Cliente</label>
-                    </div>
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" name="tipo_carpeta" id="tipo_vendedor" value="vendedor">
-                        <label class="form-check-label" for="tipo_vendedor">Vendedor</label>
-                    </div>
-                </div>
-            </fieldset>
-
-            <fieldset class="mb-4">
-                <legend class="h5 mb-3"><i class="fas fa-user-tie"></i> Información</legend>
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="nombre_entidad" class="form-label"><i class="fas fa-user"></i> Nombre Completo</label>
-                        <input type="text" name="nombre_entidad" id="nombre_entidad" class="form-control" placeholder="Ej: Seguros Pepito S.A.S" required>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="nit_entidad" class="form-label"><i class="fas fa-id-card"></i> NIT o C.C.</label>
-                        <input type="text" name="nit_entidad" id="nit_entidad" class="form-control" placeholder="Ej: 900123456-7" required>
-                    </div>
-                </div>
-            </fieldset>
-
-            <fieldset id="cliente_docs_section" class="mb-4">
-                <legend class="h5 mb-3"><i class="fas fa-file-shield"></i> Documentos SARLAFT (Año: {{ ano_actual }})</legend>
-                 <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="consulta_cliente" class="form-label"><i class="fas fa-landmark"></i> Consulta de cliente Desqubra</label>
-                        <input type="file" name="consulta_cliente" id="consulta_cliente" class="form-control">
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="doc_cedula" class="form-label"><i class="fas fa-id-badge"></i> Cédula / Rep. Legal</label>
-                        <input type="file" name="doc_cedula" id="doc_cedula" class="form-control">
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="doc_sarlaft" class="form-label"><i class="fas fa-file-contract"></i> Formulario SARLAFT</label>
-                        <input type="file" name="doc_sarlaft" id="doc_sarlaft" class="form-control">
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="doc_rut" class="form-label"><i class="fas fa-file-invoice-dollar"></i> RUT</label>
-                        <input type="file" name="doc_rut" id="doc_rut" class="form-control">
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="doc_declaracion" class="form-label"><i class="fas fa-file-invoice"></i> Declaración de Renta</label>
-                        <input type="file" name="doc_declaracion" id="doc_declaracion" class="form-control">
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="doc_camara" class="form-label"><i class="fas fa-landmark"></i> Cámara de Comercio</label>
-                        <input type="file" name="doc_camara" id="doc_camara" class="form-control">
-                    </div>
-                </div>
-                 <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="estados_financieros" class="form-label"><i class="fas fa-file-invoice-dollar"></i> Estados financieron con notas</label>
-                        <input type="file" name="estados_financieros" id="estados_financieros" class="form-control">
-                    </div>
-                </div>
-            </fieldset>
-
-            <fieldset id="vendedor_docs_section" style="display: none;" class="mb-4">
-                <legend class="h5 mb-3"><i class="fas fa-file-upload"></i> Documentos del Vendedor</legend>
-                <div class="row">
-                    <div class="col-md-12 mb-3">
-                        <label for="documentos_vendedor" class="form-label"><i class="fas fa-file-alt"></i> Contrato, Certificación, etc.</label>
-                        <input type="file" name="documentos_vendedor[]" id="documentos_vendedor" class="form-control" multiple>
-                    </div>
-                </div>
-            </fieldset>
-
-            <div class="text-end">
-                <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-save"></i> Crear Estructura de Carpetas
+        <ul class="nav nav-tabs mb-4" id="folderTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="cliente-tab" data-bs-toggle="tab" data-bs-target="#cliente" type="button" role="tab">
+                    <i class="fas fa-user-tie me-2"></i>Carpeta Cliente (.ZIP)
                 </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="vendedor-tab" data-bs-toggle="tab" data-bs-target="#vendedor" type="button" role="tab">
+                    <i class="fas fa-briefcase me-2"></i>Carpeta Vendedor (Servidor)
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="folderTabsContent">
+            <!-- TAB CLIENTE -->
+            <div class="tab-pane fade show active" id="cliente" role="tabpanel">
+                <div id="notification-container-cliente" class="mb-4"></div>
+                <form id="crearCarpetaClienteForm" class="form-section card p-4">
+                    <input type="hidden" name="tipo_carpeta" value="cliente">
+                    <fieldset class="mb-4">
+                        <legend class="h5 mb-3"><i class="fas fa-info-circle"></i> Información del Cliente</legend>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="nombre_entidad_cli" class="form-label">Nombre Completo</label>
+                                <input type="text" name="nombre_entidad" id="nombre_entidad_cli" class="form-control" required placeholder="Ej: Seguros Pepito S.A.S">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="nit_entidad_cli" class="form-label">NIT o C.C.</label>
+                                <input type="text" name="nit_entidad" id="nit_entidad_cli" class="form-control" required placeholder="Ej: 900123456-7">
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="mb-4">
+                        <legend class="h5 mb-3"><i class="fas fa-file-shield"></i> Documentos SARLAFT (Año: <span id="ano_actual_cli"></span>)</legend>
+                        <div class="row">
+                            <div class="col-md-6 mb-3"><label class="form-label">Consulta Desqubra</label><input type="file" id="consulta_cliente" class="form-control"></div>
+                            <div class="col-md-6 mb-3"><label class="form-label">Cédula / Rep. Legal</label><input type="file" id="doc_cedula" class="form-control"></div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3"><label class="form-label">Formulario SARLAFT</label><input type="file" id="doc_sarlaft" class="form-control"></div>
+                            <div class="col-md-6 mb-3"><label class="form-label">RUT</label><input type="file" id="doc_rut" class="form-control"></div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3"><label class="form-label">Declaración Renta</label><input type="file" id="doc_declaracion" class="form-control"></div>
+                            <div class="col-md-6 mb-3"><label class="form-label">Cámara de Comercio</label><input type="file" id="doc_camara" class="form-control"></div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3"><label class="form-label">EEFF con notas</label><input type="file" id="estados_financieros" class="form-control"></div>
+                            <div class="col-md-6 mb-3"><label class="form-label">Composición Accionaria</label><input type="file" id="composicion_accionaria" class="form-control"></div>
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="mb-4">
+                        <legend class="h5 mb-3"><i class="fas fa-file-invoice-dollar"></i> Cotizaciones y Propuestas (Año: <span id="ano_cotizaciones_cli"></span>)</legend>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="cotizacion_ramo" class="form-label"><i class="fas fa-tag"></i> Nombre del RAMO</label>
+                                <input type="text" id="cotizacion_ramo" class="form-control" placeholder="Ej: CUMPLIMIENTO">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Documentos de Cotización</label>
+                                <input type="file" id="doc_cotizaciones" class="form-control" multiple>
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="mb-4">
+                        <legend class="h5 mb-3"><i class="fas fa-file-alt"></i> Documentos Adicionales / Pólizas</legend>
+                        <div class="row">
+                            <div class="col-md-6 mb-3"><label class="form-label">Tarjeta Propiedad</label><input type="file" id="doc_tarjeta_propiedad" class="form-control"></div>
+                            <div class="col-md-6 mb-3"><label class="form-label">Otro</label><input type="file" id="doc_otro" class="form-control"></div>
+                        </div>
+                        <div class="border p-3 rounded bg-light">
+                            <h6>Información de Póliza (Opcional)</h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-2"><label class="form-label">Ramo</label><input type="text" id="poliza_ramo" class="form-control" placeholder="Ej: AUTOS"></div>
+                                <div class="col-md-6 mb-2"><label class="form-label">Vigencia</label><input type="text" id="poliza_vigencia" class="form-control" placeholder="Ej: 2025-2026"></div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-md-3"><label class="form-label small">Póliza</label><input type="file" id="doc_poliza" class="form-control form-control-sm"></div>
+                                <div class="col-md-3"><label class="form-label small">Recibo</label><input type="file" id="doc_recibo" class="form-control form-control-sm"></div>
+                                <div class="col-md-3"><label class="form-label small">Clausulado</label><input type="file" id="doc_clausulado" class="form-control form-control-sm"></div>
+                                <div class="col-md-3"><label class="form-label small">Condicionado</label><input type="file" id="doc_condicionado" class="form-control form-control-sm"></div>
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <div class="text-end">
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-download me-2"></i>Generar y Descargar .ZIP</button>
+                    </div>
+                </form>
             </div>
-        </form>
+
+            <!-- TAB VENDEDOR -->
+            <div class="tab-pane fade" id="vendedor" role="tabpanel">
+                <div id="notification-container-vendedor" class="mb-4"></div>
+                <form id="crearCarpetaVendedorForm" class="form-section card p-4">
+                    <input type="hidden" name="tipo_carpeta" value="vendedor">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="nombre_entidad_ven" class="form-label">Nombre del Vendedor</label>
+                            <input type="text" name="nombre_entidad" id="nombre_entidad_ven" class="form-control" required placeholder="Ej: Juan Pérez">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="nit_entidad_ven" class="form-label">NIT o C.C.</label>
+                            <input type="text" name="nit_entidad" id="nit_entidad_ven" class="form-control" required placeholder="Ej: 12345678">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Documentos del Vendedor</label>
+                        <input type="file" name="documentos_vendedor[]" class="form-control" multiple>
+                        <small class="text-muted">Estos archivos se guardarán en el servidor.</small>
+                    </div>
+                    <div class="text-end">
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-folder-plus me-2"></i>Crear Carpeta en Servidor</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <footer class="pt-3 mt-4 text-muted border-top">&copy; 2024 UIB Corredores de Seguros S.A.</footer>
     </div>
 </div>
@@ -138,82 +186,147 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('input[name="tipo_carpeta"]').forEach(radio => {
-        radio.addEventListener('change', function() {
-            const isCliente = this.value === 'cliente';
-            document.getElementById('cliente_docs_section').style.display = isCliente ? '' : 'none';
-            document.getElementById('vendedor_docs_section').style.display = isCliente ? 'none' : '';
-        });
-    });
+    const anoActual = new Date().getFullYear();
+    if(document.getElementById('ano_actual_cli')) document.getElementById('ano_actual_cli').textContent = anoActual;
+    if(document.getElementById('ano_cotizaciones_cli')) document.getElementById('ano_cotizaciones_cli').textContent = anoActual;
 
-    function showNotification(message, type) {
-        const notificationContainer = document.getElementById('notification-container');
-        if (!notificationContainer) return;
-        
-        notificationContainer.innerHTML = '';
+    function showNotification(containerId, message, type = 'info', isPermanent = false) {
+        const container = document.getElementById(containerId);
+        if (isPermanent) container.innerHTML = '';
         const alertDiv = document.createElement('div');
-        let alertClass = 'alert-info';
-        if (type === 'success') alertClass = 'alert-success';
-        if (type === 'error') alertClass = 'alert-danger';
-
-        alertDiv.className = `alert ${alertClass} alert-dismissible fade show mt-3`;
-        alertDiv.setAttribute('role', 'alert');
-        alertDiv.textContent = message;
-        
-        const closeButton = document.createElement('button');
-        closeButton.type = 'button';
-        closeButton.className = 'btn-close';
-        closeButton.setAttribute('data-bs-dismiss', 'alert');
-        closeButton.setAttribute('aria-label', 'Close');
-        alertDiv.appendChild(closeButton);
-
-        notificationContainer.appendChild(alertDiv);
-        notificationContainer.style.display = 'block';
+        alertDiv.className = `alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show`;
+        alertDiv.innerHTML = message + '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+        container.appendChild(alertDiv);
+        if (!isPermanent) setTimeout(() => { const b = new bootstrap.Alert(alertDiv); b.close(); }, 5000);
     }
 
-    document.getElementById('crearCarpetaForm').addEventListener('submit', function(event) {
-        event.preventDefault();
+    function sanitizeName(name) {
+        return name.replace(/[<>:"/\\|?*]/g, '').trim().replace(/\s+/g, '_');
+    }
 
+    // --- LÓGICA CLIENTE (ZIP) ---
+    document.getElementById('crearCarpetaClienteForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
         const btn = this.querySelector('button[type="submit"]');
-        const originalBtnHTML = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creando carpetas...';
+        const originalHTML = btn.innerHTML;
+        btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Generando...';
 
-        const formData = new FormData(this);
+        try {
+            const formData = new FormData(this);
+            const nombre = formData.get('nombre_entidad');
+            const nit = formData.get('nit_entidad');
+            const zip = new JSZip();
+            const folderName = `${sanitizeName(nombre)}_${sanitizeName(nit)}`;
+            const base = `CLIENTES_CARPETAS/${folderName}/`;
 
-        fetch("{{ url_for('ejecutar_crear_carpeta') }}", {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().catch(() => {
-                    throw new Error(response.statusText || `Error del servidor: ${response.status}`);
-                }).then(errorData => {
-                    throw new Error(errorData.message || `Error del servidor: ${response.status}`);
-                });
+            zip.folder(`${base}SARLAFT/${anoActual}`);
+            zip.folder(`${base}POLIZAS`);
+            zip.folder(`${base}DOCUMENTOS`);
+            zip.folder(`${base}SINIESTROS`);
+
+            let count = 0;
+
+            // SARLAFT
+            const sarlaftMap = {
+                'consulta_cliente': 'Consulta_Cliente_Desqubra', 'doc_cedula': 'Cedula_Representante_legal',
+                'doc_sarlaft': 'Sarlaft_Cliente', 'doc_rut': 'RUT_Cliente', 'doc_declaracion': 'Declaracion_Renta',
+                'doc_camara': 'Camara_Comercio', 'estados_financieros': 'Estados_Financieros_Notas',
+                'composicion_accionaria': 'Composicion_Accionaria'
+            };
+            for (const [id, name] of Object.entries(sarlaftMap)) {
+                const input = document.getElementById(id);
+                if (input && input.files.length > 0) {
+                    const f = input.files[0];
+                    zip.file(`${base}SARLAFT/${anoActual}/${name}.${f.name.split('.').pop()}`, f);
+                    count++;
+                }
             }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                showNotification(data.message, 'success');
-                document.getElementById('crearCarpetaForm').reset();
-                document.getElementById('tipo_cliente').dispatchEvent(new Event('change'));
+
+            // Cotizaciones
+            const ramoCot = document.getElementById('cotizacion_ramo').value;
+            let cotPath = `${base}COTIZACIONES-PROPUESTAS/${anoActual}/`;
+            if (ramoCot) {
+                cotPath += `${sanitizeName(ramoCot)}/`;
+                zip.folder(cotPath);
             } else {
-                showNotification(data.message || 'Ocurrió un error.', 'error');
+                zip.folder(cotPath);
             }
-        })
-        .catch(error => {
-            console.error('Error en fetch:', error);
-            showNotification('Error de conexión o del servidor: ' + error.message, 'error');
-        })
-        .finally(() => {
-            btn.disabled = false;
-            btn.innerHTML = originalBtnHTML;
-        });
+            const cotInput = document.getElementById('doc_cotizaciones');
+            if (cotInput && cotInput.files.length > 0) {
+                for (let f of cotInput.files) {
+                    zip.file(`${cotPath}${sanitizeName(f.name)}`, f);
+                    count++;
+                }
+            }
+
+            // Documentos / Pólizas
+            const docAdd = ['doc_tarjeta_propiedad', 'doc_otro'];
+            docAdd.forEach(id => {
+                const input = document.getElementById(id);
+                if (input && input.files.length > 0) {
+                    const f = input.files[0];
+                    zip.file(`${base}DOCUMENTOS/${sanitizeName(f.name)}`, f);
+                    count++;
+                }
+            });
+
+            const rPol = sanitizeName(document.getElementById('poliza_ramo').value);
+            const vPol = sanitizeName(document.getElementById('poliza_vigencia').value);
+            if (rPol && vPol) {
+                const pBase = `${base}POLIZAS/${rPol}/${vPol}/`;
+                const pMap = {'doc_poliza': 'Poliza', 'doc_recibo': 'Recibo', 'doc_clausulado': 'Clausulado', 'doc_condicionado': 'Condicionado'};
+                for (const [id, name] of Object.entries(pMap)) {
+                    const input = document.getElementById(id);
+                    if (input && input.files.length > 0) {
+                        const f = input.files[0];
+                        zip.file(`${pBase}${name}.${f.name.split('.').pop()}`, f);
+                        count++;
+                    }
+                }
+            }
+
+            const content = await zip.generateAsync({type: "blob"});
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(content);
+            link.download = `${folderName}.zip`;
+            link.click();
+
+            showNotification('notification-container-cliente',
+                `<strong>¡Descarga Exitosa!</strong> El archivo ${folderName}.zip se ha generado. <br><small>Recuerde desbloquear el ZIP en propiedades antes de extraer.</small>`,
+                'success', true);
+            this.reset();
+        } catch (err) {
+            console.error(err);
+            showNotification('notification-container-cliente', 'Error al generar el ZIP.', 'error');
+        } finally {
+            btn.disabled = false; btn.innerHTML = originalHTML;
+        }
+    });
+
+    // --- LÓGICA VENDEDOR (SERVIDOR) ---
+    document.getElementById('crearCarpetaVendedorForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const btn = this.querySelector('button[type="submit"]');
+        const originalHTML = btn.innerHTML;
+        btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Guardando...';
+
+        try {
+            const res = await fetch('/ejecutar_crear_carpeta', { method: 'POST', body: new FormData(this) });
+            const data = await res.json();
+            if (data.success) {
+                showNotification('notification-container-vendedor', data.message, 'success');
+                this.reset();
+            } else {
+                showNotification('notification-container-vendedor', data.message, 'error');
+            }
+        } catch (err) {
+            showNotification('notification-container-vendedor', 'Error de conexión con el servidor.', 'error');
+        } finally {
+            btn.disabled = false; btn.innerHTML = originalHTML;
+        }
     });
 });
 </script>
+
 </body>
 </html>
